@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>小紅花花園</title>
+<meta name="app-version" content="8">
 <meta name="theme-color" content="#010101">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -631,6 +632,17 @@ input::placeholder { color: var(--ink-faint); }
     if (!d) { d = document.createElement("div"); d.id = "err"; document.body.appendChild(d); }
     d.textContent = "出錯了：" + (e.message || "未知") + (e.lineno ? " (行 " + e.lineno + ")" : "");
   });
+  // 自動換新版：每次打開（或回到頁面）時比對線上版本號，不同就重新載入，主畫面捷徑不用手動刷新
+  function checkUpdate() {
+    var cur = document.querySelector('meta[name="app-version"]');
+    if (!cur || !window.fetch) return;
+    fetch(location.pathname + "?_=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.text(); }).then(function (t) {
+      var m = t.match(/name="app-version" content="(\d+)"/);
+      if (m && m[1] !== cur.content && location.search.indexOf("v=" + m[1]) === -1 && !document.getElementById("sheet-root").firstChild) location.replace(location.pathname + "?v=" + m[1]);
+    }).catch(function () {});
+  }
+  setTimeout(checkUpdate, 1500);
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") checkUpdate(); });
   window.addEventListener("resize", function () { layoutVideo(); if (started) renderOrb(derive().confirmed); });
   window.addEventListener("offline", function () { setConn("沒有網路"); });
   window.addEventListener("online", function () { setConn(""); if (started) refresh(); });
