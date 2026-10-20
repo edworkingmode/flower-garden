@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>小紅花花園</title>
+<meta name="theme-color" content="#010101">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="小紅花">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
 <link rel="stylesheet" href="https://db.onlinewebfonts.com/c/2bf40ab72ea4897a3fd9b6e48b233a19?family=Garamond">
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -31,7 +39,13 @@ button { font: inherit; color: inherit; cursor: pointer; background: none; borde
 button:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
 
 #stage { position: fixed; top: 0; right: 0; bottom: 0; left: 0; overflow: hidden; background: #010101; }
-#bg { position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+#bg { position: absolute; display: block; max-width: none; object-fit: fill;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 6%, #000 97%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 6%, #000 97%, transparent 100%); }
+.conn { font-size: 12px; color: var(--amber); letter-spacing: .08em; }
+.msgcard { border-radius: 16px; padding: 14px; background: rgba(255,255,255,.06); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+.msgcard small { color: var(--ink-faint); font-size: 12px; letter-spacing: .1em; }
+.msgcard p { font-size: 17px; line-height: 1.5; }
 #orb-layer { position: absolute; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; }
 .flower { position: absolute; display: block; transform-origin: 50% 100%; overflow: visible; shape-rendering: geometricPrecision; }
 .flower.new { animation: bloom 1s cubic-bezier(.2, 1.4, .4, 1) both; }
@@ -55,6 +69,11 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outli
 .brand { font-size: 12px; letter-spacing: .25em; text-transform: uppercase; color: var(--ink); min-width: 0; }
 .brand small { display: block; font-size: 11px; letter-spacing: .12em; color: var(--ink-faint); text-transform: none; margin-top: 2px; }
 .actions { display: flex; gap: 8px; }
+#ui .dock { position: absolute; left: 16px; right: 16px; margin: 0 auto; bottom: max(14px, env(safe-area-inset-bottom, 0px)); z-index: 6; max-width: 420px; display: flex; gap: 4px; padding: 6px; border-radius: 28px; pointer-events: auto; }
+.dock .tab { position: relative; flex: 1; min-width: 0; min-height: 52px; border-radius: 22px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 12px; letter-spacing: .1em; color: var(--ink-soft); }
+.dock .tab svg { width: 20px; height: 20px; }
+.dock .tab:active { background: rgba(255,255,255,.08); }
+.dock .badge { top: 2px; right: calc(50% - 26px); }
 .pill { position: relative; font-size: 13px; padding: 8px 16px; border-radius: 999px; min-height: 36px; letter-spacing: .08em; }
 .badge { position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; border-radius: 10px; background: var(--amber); color: #1a1204; font-size: 12px; font-weight: 500; display: grid; place-items: center; padding: 0 5px; }
 
@@ -138,7 +157,7 @@ input::placeholder { color: var(--ink-faint); }
   <radialGradient id="baseShadow"><stop offset="0" stop-color="#000" stop-opacity=".6"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
 </defs></svg>
 <div id="stage">
-  <video id="bg" src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260619_191346_9d19d66e-86a4-47f7-8dc6-712c1788c3b2.mp4" autoplay muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
+  <video id="bg" src="bg.mp4" autoplay muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
   <div id="orb-layer"></div>
   <div id="ui"></div>
 </div>
@@ -157,11 +176,21 @@ input::placeholder { color: var(--ink-faint); }
   // 獎勵兌換先關閉。之後打開時：花的餘額 = 已確認的花 - 已兌換的花，兌換紀錄放在 rewards 資料表。
   var REWARDS_ENABLED = false;
   // 影片尺寸與玻璃球在影片中的位置（以影片寬高為基準的比例）
-  var VID = { w: 3828, h: 2164 };
+  var VID = { w: 1920, h: 1086 };
   var ORB = { cx: 0.506, cy: 0.718, rx: 0.1413, ry: 0.2356 };
 
   var cfg = window.GARDEN_CONFIG || {};
   var isHer = true, docs = [], loaded = false, prevCount = null, busy = false, started = false;
+  var seenTs = null, animated = {}, cardShown = false, sheetOnClose = null, connText = "";
+  function seenKey() { return "garden-seen-" + (isHer ? "her" : "him"); }
+  function saveSeen(t) { seenTs = t; try { localStorage.setItem(seenKey(), String(t)); } catch (e) {} }
+  function loadSeen(maxTs) {
+    if (seenTs !== null) return;
+    var v = null; try { v = localStorage.getItem(seenKey()); } catch (e) {}
+    if (v === null) saveSeen(maxTs); else seenTs = +v;
+  }
+  function setConn(t) { connText = t; var n = document.querySelector(".conn"); if (n) n.textContent = t; }
+  function haptic() { try { if (navigator.vibrate) navigator.vibrate(15); } catch (e) {} }
 
   // ---------- 小工具 ----------
   function el(tag, attrs, kids) {
@@ -185,7 +214,7 @@ input::placeholder { color: var(--ink-faint); }
   function pad(n) { return n < 10 ? "0" + n : "" + n; }
   function dateKey(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
   function shortDate(k) { var p = k.split("-"); return +p[1] + "/" + +p[2]; }
-  function mealName(k) { for (var i = 0; i < MEALS.length; i++) if (MEALS[i].key === k) return MEALS[i].name; return "特別加花"; }
+  function mealName(k) { for (var i = 0; i < MEALS.length; i++) if (MEALS[i].key === k) return MEALS[i].name; return k === "special" ? "特殊事件" : "特別加花"; }
   function toast(t) {
     var r = document.getElementById("toast-root");
     r.textContent = "";
@@ -235,15 +264,33 @@ input::placeholder { color: var(--ink-faint); }
     return s;
   }
 
-  // 影片是 object-fit: cover，算出玻璃球在畫面上的實際位置
-  function orbGeom() {
+  // 影片縮成約 75%、貼著下方，玻璃球水平置中；玻璃球位置跟著影片算
+  var ZOOM = 0.75, DOCK_GAP = 92;
+  function vidLayout() {
+    var stage = document.getElementById("stage");
+    var vw = stage.clientWidth, vh = stage.clientHeight;
+    var sc = Math.max(vw / VID.w, ZOOM * vh / VID.h);
+    var left = vw / 2 - ORB.cx * VID.w * sc;
+    left = Math.min(0, Math.max(vw - VID.w * sc, left));
+    return { s: sc, left: left, top: vh - DOCK_GAP - VID.h * sc };
+  }
+  function layoutVideo() {
+    var L = vidLayout(), v = document.getElementById("bg");
+    v.style.left = L.left + "px"; v.style.top = L.top + "px";
+    v.style.width = (VID.w * L.s) + "px"; v.style.height = (VID.h * L.s) + "px";
+  }
+  function orbGeom_old() {
     var stage = document.getElementById("stage");
     var vw = stage.clientWidth, vh = stage.clientHeight;
     var s = Math.max(vw / VID.w, vh / VID.h);
     var ox = (vw - VID.w * s) / 2, oy = (vh - VID.h * s) / 2;
     return { cx: ox + ORB.cx * VID.w * s, cy: oy + ORB.cy * VID.h * s, rx: ORB.rx * VID.w * s, ry: ORB.ry * VID.h * s };
   }
-  function renderOrb(confirmed) {
+  function orbGeom() {
+    var L = vidLayout();
+    return { cx: L.left + ORB.cx * VID.w * L.s, cy: L.top + ORB.cy * VID.h * L.s, rx: ORB.rx * VID.w * L.s, ry: ORB.ry * VID.h * L.s };
+  }
+  function renderOrb(confirmed, fresh) {
     var layer = document.getElementById("orb-layer");
     layer.textContent = "";
     var g = orbGeom(), n = confirmed.length;
@@ -256,16 +303,17 @@ input::placeholder { color: var(--ink-faint); }
       return;
     }
     var hF = Math.max(g.ry * 0.34, Math.min(g.ry * 0.6, g.ry * 0.6 * Math.sqrt(10 / Math.max(n, 10))));
-    var M = 40, items = [];
+    var M = 40, items = [], bloomIdx = 0;
     confirmed.forEach(function (d, i) {
       var k = i % M, wrap = Math.floor(i / M);
       var r = Math.sqrt((k + 0.5) / M) * (wrap ? 0.92 : 1), a = i * 2.39996 + wrap * 0.7;
-      items.push({ i: i, x: bx + Math.cos(a) * hw * r + (seeded(i + 90) - 0.5) * hF * 0.5, y: by + Math.sin(a) * hh * r + wrap * 3 + (seeded(i + 91) - 0.5) * hF * 0.3 });
+      items.push({ i: i, d: d, x: bx + Math.cos(a) * hw * r + (seeded(i + 90) - 0.5) * hF * 0.5, y: by + Math.sin(a) * hh * r + wrap * 3 + (seeded(i + 91) - 0.5) * hF * 0.3 });
     });
     items.sort(function (a, b) { return a.y - b.y; });
     items.forEach(function (it) {
-      var isNew = prevCount !== null && n > prevCount && it.i >= prevCount;
+      var isNew = !!(fresh && fresh[it.d.id]);
       var f = flowerSVG(it.i, "flower" + (isNew ? " new" : ""));
+      if (isNew) { f.style.animationDelay = (bloomIdx++ * 0.25) + "s"; animated[it.d.id] = 1; }
       var dp = Math.max(0, Math.min(1, (it.y - (by - hh)) / (2 * hh)));
       f.style.opacity = (0.8 + 0.2 * dp).toFixed(2);
       f.style.height = hF + "px"; f.style.width = (hF * 0.75) + "px";
@@ -284,8 +332,8 @@ input::placeholder { color: var(--ink-faint); }
       .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.status === 204 ? null : r.text().then(function (t) { return t ? JSON.parse(t) : null; }); });
   }
   async function refresh() {
-    try { docs = await api("meals?select=*&order=ts.desc&limit=500"); loaded = true; render(); }
-    catch (e) { if (!loaded) toast("連不上資料庫，請檢查設定"); }
+    try { docs = await api("meals?select=*&order=ts.desc&limit=500"); loaded = true; setConn(""); render(); }
+    catch (e) { setConn(navigator.onLine === false ? "沒有網路" : "連線不穩，稍後重試"); if (!loaded) toast("連不上資料庫，請檢查設定"); }
   }
   function derive() {
     var confirmed = docs.filter(function (d) { return d.status === "confirmed"; }).sort(function (a, b) { return (a.ts || 0) - (b.ts || 0); });
@@ -308,8 +356,8 @@ input::placeholder { color: var(--ink-faint); }
   // ---------- 寫入 ----------
   async function write(fn, okMsg) {
     if (busy) return;
-    busy = true;
-    try { await fn(); if (okMsg) toast(okMsg); }
+    busy = true; setConn("傳送中…");
+    try { await fn(); if (okMsg) { toast(okMsg); haptic(); } }
     catch (e) { toast("沒有成功，請再試一次"); }
     busy = false;
     await refresh();
@@ -318,6 +366,18 @@ input::placeholder { color: var(--ink-faint); }
     var today = dateKey(new Date());
     var data = { id: today + "_" + meal, date: today, meal: meal, status: isHer ? "pending" : "confirmed", note: note || "", reply: "", ts: Date.now() };
     return write(function () { return api("meals?on_conflict=id", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: data }); }, isHer ? "已送出，等" + HIM + "確認" : "已幫" + HER + "記上一朵");
+  }
+  function claimSpecial(reason) {
+    var today = dateKey(new Date()), ts = Date.now();
+    var data = { id: today + "_special_" + ts, date: today, meal: "special", status: "pending", note: reason, reply: "", ts: ts };
+    return write(function () { return api("meals", { method: "POST", prefer: "return=minimal", body: data }); }, "已送出，等" + HIM + "確認");
+  }
+  function openSpecial() {
+    if (isHer) {
+      openInput("特殊事件", "原因，例如：生病還是有吃藥", "送出申請", function (v) { if (!v) { toast("請寫一下原因"); return; } claimSpecial(v); });
+    } else {
+      openInput("額外加一朵", "原因，例如：今天特別棒（可留空）", "加一朵", function (v) { addBonus(v); });
+    }
   }
   function confirmDoc(d, reply) {
     return write(function () { return api("meals?id=eq." + encodeURIComponent(d.id), { method: "PATCH", prefer: "return=minimal", body: { status: "confirmed", reply: reply || "", ts: Date.now() } }); }, "已確認，玻璃球裡長出一朵");
@@ -331,14 +391,30 @@ input::placeholder { color: var(--ink-faint); }
   }
 
   // ---------- 彈出面板 ----------
-  function closeSheet() { document.getElementById("sheet-root").textContent = ""; }
+  function closeSheet() {
+    document.getElementById("sheet-root").textContent = "";
+    if (sheetOnClose) { var f = sheetOnClose; sheetOnClose = null; f(); }
+  }
   function openPanel(kids) {
+    sheetOnClose = null;
     var root = document.getElementById("sheet-root");
     root.textContent = "";
     var wrap = el("div", { class: "sheet-wrap", onclick: function (e) { if (e.target === wrap) closeSheet(); } }, [
       el("div", { class: "sheet", role: "dialog" }, kids)
     ]);
     root.appendChild(wrap);
+  }
+  function showNewCard(list, maxTs) {
+    if (document.getElementById("sheet-root").firstChild) return;
+    var withReply = list.filter(function (d) { return d.reply; }).slice(-3).reverse();
+    var kids = [el("h2", { text: "有 " + list.length + " 朵新花開了" })];
+    if (!withReply.length) kids.push(el("p", { class: "legend", text: HIM + "確認了你的花。" }));
+    withReply.forEach(function (d) {
+      kids.push(el("div", { class: "msgcard" }, [el("small", { text: shortDate(d.date) + " " + mealName(d.meal) }), el("p", { text: HIM + "：" + d.reply })]));
+    });
+    kids.push(el("div", { class: "row" }, [el("button", { class: "btn primary", text: "收下", onclick: closeSheet })]));
+    openPanel(kids);
+    sheetOnClose = function () { saveSeen(maxTs); };
   }
   function openInput(title, placeholder, okLabel, onOk) {
     var input = el("input", { type: "text", id: "sheet-input", placeholder: placeholder, maxlength: "80", "aria-label": placeholder });
@@ -365,12 +441,7 @@ input::placeholder { color: var(--ink-faint); }
         ])
       ]));
     });
-    var reason = el("input", { type: "text", id: "bonus-reason", placeholder: "原因，例如：生病還是有吃藥", maxlength: "80", "aria-label": "額外加花的原因" });
-    kids.push(el("h3", { text: "特殊情況，額外加一朵" }), reason,
-      el("div", { class: "row" }, [
-        el("button", { class: "btn primary", text: "加一朵", onclick: function () { var v = reason.value.trim(); closeSheet(); addBonus(v); } }),
-        el("button", { class: "btn ghost", text: "關閉", onclick: closeSheet })
-      ]));
+    kids.push(el("div", { class: "row" }, [el("button", { class: "btn ghost", text: "關閉", onclick: closeSheet })]));
     openPanel(kids);
   }
   function openRecords() {
@@ -423,15 +494,9 @@ input::placeholder { color: var(--ink-faint); }
     var todayKey = dateKey(new Date());
     var pend = pendingDocs();
 
-    var actions = el("div", { class: "actions" });
-    if (!isHer) {
-      var pb = el("button", { class: "pill liquid-glass", "aria-label": "等你確認", onclick: openPending }, ["確認", pend.length ? el("span", { class: "badge", text: String(pend.length) }) : null]);
-      actions.appendChild(pb);
-    }
-    actions.appendChild(el("button", { class: "pill liquid-glass", text: "紀錄", onclick: openRecords }));
     ui.appendChild(el("div", { class: "top" }, [
       el("div", { class: "brand" }, ["Little Red Flower", el("small", { text: isHer ? HER : HIM })]),
-      actions
+      el("span", { class: "conn", text: connText })
     ]));
 
     ui.appendChild(el("div", { class: "hero" }, [
@@ -465,8 +530,32 @@ input::placeholder { color: var(--ink-faint); }
     var cap = !isHer && pend.length ? pend.length + " 筆等你確認" : (!openCount ? "今天三餐都記好了" : "");
     ui.appendChild(el("p", { class: "caption", text: cap }));
 
-    renderOrb(info.confirmed);
+    var ico = function (kids) { return svg("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "1.6", "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" }, kids); };
+    var dock = el("div", { class: "dock liquid-glass" });
+    if (!isHer) {
+      dock.appendChild(el("button", { class: "tab", "aria-label": "等你確認", onclick: openPending }, [
+        ico([svg("path", { d: "M5 12.5l4.5 4.5L19 7.5" })]), "確認", pend.length ? el("span", { class: "badge", text: String(pend.length) }) : null
+      ]));
+    }
+    dock.appendChild(el("button", { class: "tab", onclick: openSpecial }, [
+      ico([svg("path", { d: "M12 3.5l2.4 5.3 5.6.6-4.2 3.8 1.2 5.6L12 15.9 7 18.8l1.2-5.6L4 9.4l5.6-.6z" })]), "特殊事件"
+    ]));
+    dock.appendChild(el("button", { class: "tab", onclick: openRecords }, [
+      ico([svg("path", { d: "M8 6.5h11M8 12h11M8 17.5h11M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01" })]), "紀錄"
+    ]));
+    ui.appendChild(dock);
+
+    var maxTs = info.confirmed.length ? info.confirmed[info.confirmed.length - 1].ts : 0;
+    var fresh = {}, freshList = [];
+    if (loaded) {
+      loadSeen(maxTs);
+      info.confirmed.forEach(function (d) { if (d.ts > seenTs && !animated[d.id]) { fresh[d.id] = 1; freshList.push(d); } });
+    }
+    renderOrb(info.confirmed, fresh);
     prevCount = count;
+    if (!loaded) { /* 資料還沒到 */ } else if (isHer) {
+      if (freshList.length && !cardShown) { cardShown = true; setTimeout(function () { showNewCard(info.confirmed.filter(function (d) { return d.ts > seenTs; }), maxTs); }, 1600); }
+    } else if (maxTs > seenTs) { saveSeen(maxTs); }
   }
 
   // ---------- 啟動 ----------
@@ -495,6 +584,7 @@ input::placeholder { color: var(--ink-faint); }
   // 手機常擋自動播放（省電模式、LINE/IG 內建瀏覽器），影片沒播時改用 CSS 玻璃球
   (function () {
     var v = document.getElementById("bg"), stage = document.getElementById("stage");
+    layoutVideo();
     v.muted = true; v.defaultMuted = true;
     function setNoVideo(on) { stage.classList.toggle("novideo", on); }
     v.addEventListener("playing", function () { setNoVideo(false); });
@@ -508,7 +598,9 @@ input::placeholder { color: var(--ink-faint); }
     if (!d) { d = document.createElement("div"); d.id = "err"; document.body.appendChild(d); }
     d.textContent = "出錯了：" + (e.message || "未知") + (e.lineno ? " (行 " + e.lineno + ")" : "");
   });
-  window.addEventListener("resize", function () { if (started) renderOrb(derive().confirmed); });
+  window.addEventListener("resize", function () { layoutVideo(); if (started) renderOrb(derive().confirmed); });
+  window.addEventListener("offline", function () { setConn("沒有網路"); });
+  window.addEventListener("online", function () { setConn(""); if (started) refresh(); });
   if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) { render(); return; }
   var saved = null;
   try { saved = localStorage.getItem("garden-role"); } catch (e) {}
