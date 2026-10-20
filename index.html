@@ -437,15 +437,15 @@ input::placeholder { color: var(--ink-faint); }
     var openCount = 0;
     MEALS.forEach(function (m) {
       var d = slotDoc(todayKey, m.key);
-      var cls = "meal liquid-glass open", state = isHer ? "我吃完了" : "代她記", disabled = false;
+      var cls = "meal liquid-glass open", state = isHer ? "我吃完了" : "", disabled = false;
       if (d && d.status === "confirmed") { cls = "meal liquid-glass done"; state = "已領"; disabled = true; }
       else if (d && d.status === "pending") { cls = "meal liquid-glass pending"; state = isHer ? "等" + HIM + "確認" : "待確認"; disabled = true; }
       else if (d && d.status === "rejected") { state = "再領一次"; }
       if (!disabled) openCount++;
-      var kids = [el("span", { class: "name", text: m.name }), el("span", { class: "state", text: state })];
+      var kids = [el("span", { class: "name", text: m.name }), state ? el("span", { class: "state", text: state }) : null];
       if (d && d.status === "confirmed") kids.unshift(flowerSVG(0, "mini"));
       mealsEl.appendChild(el("button", {
-        class: cls, disabled: disabled ? "" : false, "aria-label": m.name + "，" + state,
+        class: cls, disabled: disabled ? "" : false, "aria-label": m.name + (state ? "，" + state : ""),
         onclick: function () {
           openInput(isHer ? "吃完" + m.name + "了嗎？" : "幫" + HER + "記上" + m.name, isHer ? "想跟" + HIM + "說什麼？（可留空）" : "備註（可留空）", isHer ? "送出" : "記上一朵", function (v) { claim(m.key, v); });
         }
