@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>小紅花花園</title>
-<meta name="app-version" content="8">
+<meta name="app-version" content="9">
 <meta name="theme-color" content="#010101">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -49,6 +49,10 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outli
 .msgcard p { font-size: 17px; line-height: 1.5; }
 #orb-layer { position: absolute; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; }
 .flower { position: absolute; display: block; transform-origin: 50% 100%; overflow: visible; shape-rendering: geometricPrecision; }
+.pf { position: absolute; transform-origin: 50% 100%; }
+.pf .head { position: absolute; left: 0; top: 0; background-image: url(flowers.png); background-repeat: no-repeat; background-size: 300% 300%; }
+.pf .stem { position: absolute; left: 50%; border-radius: 2px; background: linear-gradient(to bottom, #36563a, #0d2013); transform-origin: 50% 0; }
+.pf.new { animation: bloom 1s cubic-bezier(.2, 1.4, .4, 1) both; }
 .flower.new { animation: bloom 1s cubic-bezier(.2, 1.4, .4, 1) both; }
 @keyframes bloom { from { transform: scale(0) rotate(-20deg); opacity: 0; } to { transform: scale(1) rotate(0); opacity: 1; } }
 #orb-fb { display: none; position: absolute; border-radius: 50%;
@@ -287,6 +291,25 @@ input::placeholder { color: var(--ink-faint); }
     return s;
   }
 
+  // 照片花：圖集 flowers.png 是 3x3，每格一朵（取自影片裡的小花並改成紅色）
+  function photoFlower(i, isNew, S) {
+    var idx = Math.floor(seeded(i * 3 + 1) * 9), col = idx % 3, row = Math.floor(idx / 3);
+    var flip = seeded(i * 5 + 2) > 0.5 ? -1 : 1, tilt = (seeded(i * 7 + 3) - 0.5) * 30, lean = (seeded(i * 11 + 4) - 0.5) * 12;
+    var stemH = S * (0.45 + seeded(i * 13 + 5) * 0.3), H = S * 0.55 + stemH;
+    var f = el("div", { class: "pf" + (isNew ? " new" : ""), "aria-hidden": "true" });
+    f.style.width = S + "px"; f.style.height = H + "px";
+    var stem = el("div", { class: "stem" });
+    stem.style.top = (S * 0.5) + "px"; stem.style.height = (H - S * 0.5) + "px"; stem.style.width = Math.max(1.2, S * 0.035) + "px";
+    stem.style.marginLeft = (-Math.max(1.2, S * 0.035) / 2) + "px"; stem.style.transform = "rotate(" + lean.toFixed(1) + "deg)";
+    var head = el("div", { class: "head" });
+    head.style.width = S + "px"; head.style.height = S + "px";
+    head.style.backgroundPosition = (col * 50) + "% " + (row * 50) + "%";
+    head.style.transform = "scaleX(" + flip + ") rotate(" + tilt.toFixed(1) + "deg)";
+    f.appendChild(stem); f.appendChild(head);
+    f._H = H;
+    return f;
+  }
+
   // 影片縮成約 75%、貼著下方，玻璃球水平置中；玻璃球位置跟著影片算
   var ZOOM = 0.75, DOCK_GAP = 106;
   function vidLayout() {
@@ -329,6 +352,7 @@ input::placeholder { color: var(--ink-faint); }
       return;
     }
     var hF = Math.max(g.ry * 0.34, Math.min(g.ry * 0.6, g.ry * 0.6 * Math.sqrt(10 / Math.max(n, 10))));
+    var S0 = g.ry * 0.4 * Math.max(0.62, Math.min(1, Math.sqrt(14 / Math.max(n, 14))));
     var M = 40, items = [], bloomIdx = 0;
     confirmed.forEach(function (d, i) {
       var k = i % M, wrap = Math.floor(i / M);
@@ -338,12 +362,12 @@ input::placeholder { color: var(--ink-faint); }
     items.sort(function (a, b) { return a.y - b.y; });
     items.forEach(function (it) {
       var isNew = !!(fresh && fresh[it.d.id]);
-      var f = flowerSVG(it.i, "flower" + (isNew ? " new" : ""));
-      if (isNew) { f.style.animationDelay = (bloomIdx++ * 0.25) + "s"; animated[it.d.id] = 1; }
       var dp = Math.max(0, Math.min(1, (it.y - (by - hh)) / (2 * hh)));
-      f.style.opacity = (0.8 + 0.2 * dp).toFixed(2);
-      f.style.height = hF + "px"; f.style.width = (hF * 0.75) + "px";
-      f.style.left = (it.x - hF * 0.375) + "px"; f.style.top = (it.y - hF) + "px";
+      var S = S0 * (0.86 + 0.28 * dp);
+      var f = photoFlower(it.i, isNew, S);
+      if (isNew) { f.style.animationDelay = (bloomIdx++ * 0.25) + "s"; animated[it.d.id] = 1; }
+      f.style.opacity = (0.82 + 0.18 * dp).toFixed(2);
+      f.style.left = (it.x - S / 2) + "px"; f.style.top = (it.y - f._H) + "px";
       layer.appendChild(f);
     });
   }
