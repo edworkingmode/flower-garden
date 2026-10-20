@@ -69,7 +69,23 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outli
 .brand { font-size: 12px; letter-spacing: .25em; text-transform: uppercase; color: var(--ink); min-width: 0; }
 .brand small { display: block; font-size: 11px; letter-spacing: .12em; color: var(--ink-faint); text-transform: none; margin-top: 2px; }
 .actions { display: flex; gap: 8px; }
-#ui .dock { position: absolute; left: 16px; right: 16px; margin: 0 auto; bottom: max(14px, env(safe-area-inset-bottom, 0px)); z-index: 6; max-width: 420px; display: flex; gap: 4px; padding: 6px; border-radius: 28px; pointer-events: auto; }
+#ui .dock { position: absolute; left: 16px; right: 16px; margin: 0 auto; bottom: max(14px, env(safe-area-inset-bottom, 0px)); z-index: 6; max-width: 420px; display: block; padding: 6px 6px 22px; border-radius: 28px; pointer-events: auto; }
+.dock .pages { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; overscroll-behavior-x: contain; }
+.dock .pages::-webkit-scrollbar { display: none; }
+.dock .page { flex: 0 0 100%; display: flex; gap: 4px; scroll-snap-align: center; scroll-snap-stop: always; }
+.dock .dots2 { position: absolute; left: 0; right: 0; bottom: 3px; display: flex; justify-content: center; gap: 2px; }
+.dock .dot2 { position: relative; width: 22px; height: 16px; }
+.dock .dot2::after { content: ""; position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: rgba(255,255,255,.3); }
+.dock .dot2.on::after { background: #fff; }
+.dock .dot2.alert::after { background: var(--amber); }
+.dock .mbtn { flex: 1; min-width: 0; min-height: 52px; border-radius: 22px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.dock .mbtn .name { font-size: 15px; letter-spacing: .12em; }
+.dock .mbtn .state { font-size: 11px; letter-spacing: .08em; color: var(--ink-soft); }
+.dock .mbtn:active { background: rgba(255,255,255,.08); }
+.dock .mbtn.done { background: var(--red-soft); cursor: default; }
+.dock .mbtn.done .state { color: var(--red); }
+.dock .mbtn.pending { background: var(--amber-soft); cursor: default; }
+.dock .mbtn.pending .state { color: var(--amber); }
 .dock .tab { position: relative; flex: 1; min-width: 0; min-height: 52px; border-radius: 22px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 12px; letter-spacing: .1em; color: var(--ink-soft); }
 .dock .tab svg { width: 20px; height: 20px; }
 .dock .tab:active { background: rgba(255,255,255,.08); }
@@ -181,7 +197,7 @@ input::placeholder { color: var(--ink-faint); }
 
   var cfg = window.GARDEN_CONFIG || {};
   var isHer = true, docs = [], loaded = false, prevCount = null, busy = false, started = false;
-  var seenTs = null, animated = {}, cardShown = false, sheetOnClose = null, connText = "";
+  var dockPage = 0, seenTs = null, animated = {}, cardShown = false, sheetOnClose = null, connText = "";
   function seenKey() { return "garden-seen-" + (isHer ? "her" : "him"); }
   function saveSeen(t) { seenTs = t; try { localStorage.setItem(seenKey(), String(t)); } catch (e) {} }
   function loadSeen(maxTs) {
@@ -265,7 +281,7 @@ input::placeholder { color: var(--ink-faint); }
   }
 
   // 影片縮成約 75%、貼著下方，玻璃球水平置中；玻璃球位置跟著影片算
-  var ZOOM = 0.75, DOCK_GAP = 92;
+  var ZOOM = 0.75, DOCK_GAP = 106;
   function vidLayout() {
     var stage = document.getElementById("stage");
     var vw = stage.clientWidth, vh = stage.clientHeight;
@@ -508,42 +524,50 @@ input::placeholder { color: var(--ink-faint); }
       ])
     ]));
 
-    var mealsEl = el("div", { class: "meals" });
-    var openCount = 0;
+    var mealPage = el("div", { class: "page" });
     MEALS.forEach(function (m) {
       var d = slotDoc(todayKey, m.key);
-      var cls = "meal liquid-glass open", state = isHer ? "我吃完了" : "", disabled = false;
-      if (d && d.status === "confirmed") { cls = "meal liquid-glass done"; state = "已領"; disabled = true; }
-      else if (d && d.status === "pending") { cls = "meal liquid-glass pending"; state = isHer ? "等" + HIM + "確認" : "待確認"; disabled = true; }
+      var cls = "mbtn", state = isHer ? "我吃完了" : "代記", disabled = false;
+      if (d && d.status === "confirmed") { cls = "mbtn done"; state = "已領"; disabled = true; }
+      else if (d && d.status === "pending") { cls = "mbtn pending"; state = isHer ? "等" + HIM + "確認" : "待確認"; disabled = true; }
       else if (d && d.status === "rejected") { state = "再領一次"; }
-      if (!disabled) openCount++;
-      var kids = [el("span", { class: "name", text: m.name }), state ? el("span", { class: "state", text: state }) : null];
-      if (d && d.status === "confirmed") kids.unshift(flowerSVG(0, "mini"));
-      mealsEl.appendChild(el("button", {
-        class: cls, disabled: disabled ? "" : false, "aria-label": m.name + (state ? "，" + state : ""),
+      var b = el("button", {
+        class: cls, "aria-label": m.name + "，" + state,
         onclick: function () {
           openInput(isHer ? "吃完" + m.name + "了嗎？" : "幫" + HER + "記上" + m.name, isHer ? "想跟" + HIM + "說什麼？（可留空）" : "備註（可留空）", isHer ? "送出" : "記上一朵", function (v) { claim(m.key, v); });
         }
-      }, kids));
+      }, [el("span", { class: "name", text: m.name }), el("span", { class: "state", text: state })]);
+      if (disabled) b.setAttribute("disabled", "");
+      mealPage.appendChild(b);
     });
-    ui.appendChild(mealsEl);
-    var cap = !isHer && pend.length ? pend.length + " 筆等你確認" : (!openCount ? "今天三餐都記好了" : "");
-    ui.appendChild(el("p", { class: "caption", text: cap }));
 
     var ico = function (kids) { return svg("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "1.6", "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" }, kids); };
-    var dock = el("div", { class: "dock liquid-glass" });
+    var toolPage = el("div", { class: "page" });
     if (!isHer) {
-      dock.appendChild(el("button", { class: "tab", "aria-label": "等你確認", onclick: openPending }, [
+      toolPage.appendChild(el("button", { class: "tab", "aria-label": "等你確認", onclick: openPending }, [
         ico([svg("path", { d: "M5 12.5l4.5 4.5L19 7.5" })]), "確認", pend.length ? el("span", { class: "badge", text: String(pend.length) }) : null
       ]));
     }
-    dock.appendChild(el("button", { class: "tab", onclick: openSpecial }, [
+    toolPage.appendChild(el("button", { class: "tab", onclick: openSpecial }, [
       ico([svg("path", { d: "M12 3.5l2.4 5.3 5.6.6-4.2 3.8 1.2 5.6L12 15.9 7 18.8l1.2-5.6L4 9.4l5.6-.6z" })]), "特殊事件"
     ]));
-    dock.appendChild(el("button", { class: "tab", onclick: openRecords }, [
+    toolPage.appendChild(el("button", { class: "tab", onclick: openRecords }, [
       ico([svg("path", { d: "M8 6.5h11M8 12h11M8 17.5h11M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01" })]), "紀錄"
     ]));
+
+    var pages = el("div", { class: "pages" }, [mealPage, toolPage]);
+    var dots = el("div", { class: "dots2" });
+    var dotEls = [0, 1].map(function (n) {
+      var d = el("button", { class: "dot2" + (n === dockPage ? " on" : "") + (n === 1 && pend.length && !isHer ? " alert" : ""), "aria-label": n === 0 ? "三餐" : "更多", onclick: function () { pages.scrollTo({ left: n * pages.clientWidth, behavior: "smooth" }); } });
+      dots.appendChild(d); return d;
+    });
+    pages.addEventListener("scroll", function () {
+      var n = Math.round(pages.scrollLeft / Math.max(1, pages.clientWidth));
+      if (n !== dockPage) { dockPage = n; dotEls.forEach(function (d, k) { d.classList.toggle("on", k === n); }); }
+    }, { passive: true });
+    var dock = el("div", { class: "dock liquid-glass" }, [pages, dots]);
     ui.appendChild(dock);
+    pages.scrollLeft = dockPage * pages.clientWidth;
 
     var maxTs = info.confirmed.length ? info.confirmed[info.confirmed.length - 1].ts : 0;
     var fresh = {}, freshList = [];
