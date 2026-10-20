@@ -1,170 +1,142 @@
 <!doctype html>
-<html lang="zh-Hant"><head>
+<html lang="zh-Hant">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>小紅花花園</title>
 <link rel="stylesheet" href="https://db.onlinewebfonts.com/c/2bf40ab72ea4897a3fd9b6e48b233a19?family=Garamond">
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500&display=swap" rel="stylesheet">
-<script>tailwind = { config: { corePlugins: { preflight: false } } };</script>
-<script src="https://cdn.tailwindcss.com/3.4.17"></script>
-<script type="importmap">
-{ "imports": {
-  "react": "https://esm.sh/react@18.3.1",
-  "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
-  "react-dom/client": "https://esm.sh/react-dom@18.3.1/client?external=react",
-  "framer-motion": "https://esm.sh/framer-motion@11.11.17?external=react,react-dom"
-} }
-</script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
-/* 版面概念：手機單欄。上方是大數字，中間是會越長越滿的花園，下方是今天三餐、本週、紀錄。 */
+/* 版面概念：一頁滿版。影片當背景，上方是數字與三餐按鈕，小紅花種在影片裡那顆玻璃球內。其餘功能用彈出面板。 */
 :root {
-  --bg: #f1f5ec;
-  --surface: #fbfdf8;
-  --ink: #1d3a2a;
-  --muted: #5d7566;
-  --line: #d5e0cf;
-  --red: #d3253a;
-  --red-soft: #fbe3e5;
-  --leaf: #3f7d52;
-  --soil: #8a6a4f;
-  --soil-bg: #e7e0d2;
-  --warn: #b7791f;
-  --warn-soft: #fbefd5;
-  --on-red: #ffffff;
-  --font-display: "Noto Serif TC", "Songti TC", serif;
-  --font-body: "Noto Sans TC", "PingFang TC", system-ui, sans-serif;
+  --ink: #ffffff;
+  --ink-soft: rgba(255, 255, 255, .72);
+  --ink-faint: rgba(255, 255, 255, .5);
+  --red: #ef4b5f;
+  --red-soft: rgba(239, 75, 95, .22);
+  --amber: #f0b64a;
+  --amber-soft: rgba(240, 182, 74, .2);
+  --leaf: #5fb07a;
+  --soil: #b99677;
+  --panel: rgba(12, 14, 12, .82);
+  --line: rgba(255, 255, 255, .12);
+  --font-display: 'Garamond', 'Times New Roman', 'Noto Serif TC', serif;
+  --font-body: 'Geist', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
+  color-scheme: dark;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0f1a14; --surface: #172420; --ink: #e5f0e6; --muted: #92aa9a; --line: #2b3f33;
-    --red: #ef5266; --red-soft: #3a1c22; --leaf: #6fbf84; --soil: #b99677; --soil-bg: #231f19;
-    --warn: #e5b25a; --warn-soft: #33290f; --on-red: #1a0a0d; color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #0f1a14; --surface: #172420; --ink: #e5f0e6; --muted: #92aa9a; --line: #2b3f33;
-  --red: #ef5266; --red-soft: #3a1c22; --leaf: #6fbf84; --soil: #b99677; --soil-bg: #231f19;
-  --warn: #e5b25a; --warn-soft: #33290f; --on-red: #1a0a0d; color-scheme: dark;
-}
-* { box-sizing: border-box; }
-body {
-  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.55;
-  margin: 0;
-}
-main { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px;
-  padding-block: 28px 48px;
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-section[id], #today, #garden, #week, #log { scroll-margin-top: 16px; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body { background: #010101; color: var(--ink); font-family: var(--font-body); font-weight: 300; -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; cursor: pointer; background: none; border: 0; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
 
-/* 影片開場 */
-#hero-root, #hero-root * { box-sizing: border-box; }
-#hero-root h1, #hero-root p, #hero-root nav, #hero-root div, #hero-root a, #hero-root span { margin: 0; padding: 0; }
-#hero-root { font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif; color: #fff; background: #010101; -webkit-font-smoothing: antialiased; }
-#hero-root a { text-decoration: none; }
-#hero-root .px-5 { padding-left: 1.25rem; padding-right: 1.25rem; }
-.font-garamond { font-family: 'Garamond', 'Times New Roman', 'Noto Serif TC', serif; }
-.mobile-menu-glass { background: rgba(10, 10, 10, 0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
-.liquid-glass { background: rgba(255, 255, 255, 0.01); background-blend-mode: luminosity; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border: none; box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1); position: relative; overflow: hidden; display: inline-block; }
+#stage { position: relative; width: 100%; height: 100%; overflow: hidden; }
+#bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+#orb-layer { position: absolute; inset: 0; pointer-events: none; }
+.flower { position: absolute; display: block; transform-origin: 50% 100%; overflow: visible; }
+.flower.new { animation: bloom 1s cubic-bezier(.2, 1.4, .4, 1) both; }
+@keyframes bloom { from { transform: scale(0) rotate(-20deg); opacity: 0; } to { transform: scale(1) rotate(0); opacity: 1; } }
+.orb-hint { position: absolute; transform: translate(-50%, -50%); text-align: center; font-size: 13px; letter-spacing: .14em; color: var(--ink-soft); width: 160px; }
+
+#ui { position: relative; z-index: 5; height: 100%; display: flex; flex-direction: column; align-items: center;
+  padding-top: max(18px, env(safe-area-inset-top, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  pointer-events: none; }
+#ui > * { pointer-events: auto; }
+.top { width: 100%; max-width: 560px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.brand { font-size: 12px; letter-spacing: .25em; text-transform: uppercase; color: var(--ink); min-width: 0; }
+.brand small { display: block; font-size: 11px; letter-spacing: .12em; color: var(--ink-faint); text-transform: none; margin-top: 2px; }
+.actions { display: flex; gap: 8px; }
+.pill { position: relative; font-size: 13px; padding: 8px 16px; border-radius: 999px; min-height: 36px; letter-spacing: .08em; }
+.badge { position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; border-radius: 10px; background: var(--amber); color: #1a1204; font-size: 12px; font-weight: 500; display: grid; place-items: center; padding: 0 5px; }
+
+.hero { margin-top: clamp(14px, 4vh, 40px); text-align: center; }
+.eyebrow { font-size: 12px; letter-spacing: .24em; color: var(--ink-faint); }
+.count { display: flex; align-items: baseline; justify-content: center; gap: 10px; margin-top: 2px; }
+.num { font-family: var(--font-display); font-size: clamp(60px, 11vh, 104px); line-height: 1.05; font-variant-numeric: tabular-nums; }
+.unit { font-size: 15px; letter-spacing: .2em; color: var(--ink-soft); }
+.chips { display: flex; justify-content: center; gap: 18px; font-size: 13px; color: var(--ink-soft); letter-spacing: .08em; margin-top: 2px; }
+.chips b { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+.meals { margin-top: clamp(14px, 3.5vh, 30px); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; width: 100%; max-width: 420px; }
+.meal { border-radius: 20px; padding: 14px 4px; min-height: 74px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
+.meal .name { font-size: 15px; letter-spacing: .12em; font-weight: 400; }
+.meal .state { font-size: 12px; letter-spacing: .1em; color: var(--ink-soft); }
+.meal.open .state { color: var(--ink); }
+.meal.pending { background: var(--amber-soft); }
+.meal.pending .state { color: var(--amber); }
+.meal.done { background: var(--red-soft); cursor: default; }
+.meal.done .state { color: var(--red); }
+.meal:disabled { cursor: default; }
+.caption { margin-top: 10px; font-size: 13px; color: var(--ink-soft); letter-spacing: .06em; text-align: center; min-height: 20px; }
+
+/* 玻璃質感 */
+.liquid-glass { background: rgba(255, 255, 255, 0.01); background-blend-mode: luminosity; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border: none; box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1); position: relative; overflow: hidden; }
 .liquid-glass::before { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.4px;
   background: linear-gradient(180deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.15) 20%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.15) 80%, rgba(255,255,255,0.45) 100%);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
 .liquid-glass:hover { background: rgba(255, 255, 255, 0.04); box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.15); }
 .liquid-glass:active { transform: scale(0.98); }
-button { font: inherit; color: inherit; cursor: pointer; }
-button:focus-visible, input:focus-visible { outline: 3px solid var(--leaf); outline-offset: 2px; }
-h1, h2 { font-family: var(--font-display); margin: 0; text-wrap: balance; }
-h2 { font-size: 18px; }
-.eyebrow { font-size: 13px; letter-spacing: .08em; color: var(--muted); margin: 0; }
+.mini { width: 22px; height: 22px; }
 
-/* 頂部 */
-.hero { display: flex; flex-direction: column; gap: 4px; }
-.hero .count { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.hero .num { font-family: var(--font-display); font-weight: 800; font-size: 76px; line-height: 1; color: var(--red); font-variant-numeric: tabular-nums; }
-.hero .unit { font-family: var(--font-display); font-size: 22px; font-weight: 600; }
-.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-.chip { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 14px; font-variant-numeric: tabular-nums; }
-.chip b { color: var(--red); }
-
-/* 花園 */
-.garden { position: relative; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); padding: 14px 10px 0; overflow: hidden; }
-.garden-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: 0; min-height: 110px; }
-.flower { width: 100%; height: 64px; display: block; transform-origin: 50% 100%; }
-.flower.new { animation: bloom .9s cubic-bezier(.2,1.4,.4,1) both; }
-@keyframes bloom { from { transform: scale(0) rotate(-20deg); opacity: 0; } to { transform: scale(1) rotate(0); opacity: 1; } }
-.soil { height: 14px; margin: 0 -10px; background: var(--soil-bg); border-top: 2px solid var(--soil); }
-.garden-empty { grid-column: 1 / -1; align-self: center; text-align: center; color: var(--muted); padding: 22px 8px; }
-
-/* 今天三餐 */
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-.panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.panel-head span { color: var(--muted); font-size: 14px; }
-.meals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.meal { border: 1.5px solid var(--line); background: var(--bg); border-radius: 14px; padding: 12px 4px; display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 92px; justify-content: center; }
-.meal .name { font-weight: 700; }
-.meal .state { font-size: 13px; color: var(--muted); }
-.meal.open { border-color: var(--red); }
-.meal.open .state { color: var(--red); font-weight: 700; }
-.meal.pending { background: var(--warn-soft); border-color: var(--warn); }
-.meal.pending .state { color: var(--warn); font-weight: 700; }
-.meal.done { background: var(--red-soft); border-color: var(--red); cursor: default; }
-.meal.done .state { color: var(--red); font-weight: 700; }
-.meal:disabled { cursor: default; }
-.mini { width: 26px; height: 26px; }
-
-/* 待確認（他） */
-.pending-list { display: flex; flex-direction: column; gap: 10px; }
-.pitem { border: 1.5px solid var(--warn); background: var(--warn-soft); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-.pitem .who { font-weight: 700; }
-.pitem .quote { margin: 0; color: var(--muted); font-size: 15px; }
+/* 彈出面板 */
+.sheet-wrap { position: fixed; inset: 0; background: rgba(0, 0, 0, .55); display: flex; align-items: flex-end; justify-content: center; z-index: 20; padding: 0 max(12px, env(safe-area-inset-left, 0px)); }
+.sheet { width: 100%; max-width: 560px; max-height: 82svh; overflow-y: auto; background: var(--panel); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,.08); border-bottom: 0; box-shadow: 0 8px 32px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.1); border-radius: 22px 22px 0 0; padding: 20px 18px calc(20px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; }
+.sheet h2 { font-family: var(--font-display); font-size: 22px; font-weight: 400; letter-spacing: .06em; }
+.sheet h3 { font-size: 13px; letter-spacing: .16em; color: var(--ink-faint); font-weight: 400; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
-.btn { border: 1.5px solid var(--line); background: var(--surface); border-radius: 12px; padding: 9px 16px; font-weight: 700; min-height: 44px; }
-.btn.primary { background: var(--red); border-color: var(--red); color: var(--on-red); }
-.btn.ghost { color: var(--muted); }
-input[type=text] { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 12px; min-height: 44px; }
+.btn { border-radius: 14px; padding: 10px 18px; min-height: 44px; font-weight: 400; letter-spacing: .08em; background: rgba(255,255,255,.08); }
+.btn.primary { background: var(--red); color: #1a0a0d; font-weight: 500; }
+.btn.ghost { color: var(--ink-soft); }
+input[type=text] { width: 100%; font: inherit; color: var(--ink); background: rgba(255,255,255,.07); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-height: 44px; }
+input::placeholder { color: var(--ink-faint); }
 
-/* 本週 */
+.pitem { border: 1px solid var(--amber); background: var(--amber-soft); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.pitem .who { font-weight: 500; }
+.pitem .quote { color: var(--ink-soft); font-size: 15px; }
 .week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; text-align: center; }
 .day { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0; border-radius: 12px; border: 1px solid transparent; }
 .day.today { border-color: var(--red); }
-.day .d { font-size: 13px; color: var(--muted); }
+.day .d { font-size: 13px; color: var(--ink-faint); }
 .dots { display: flex; flex-direction: column; gap: 3px; }
-.dot { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--line); }
+.dot { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.25); }
 .dot.on { background: var(--red); border-color: var(--red); }
-.dot.wait { background: var(--warn); border-color: var(--warn); }
+.dot.wait { background: var(--amber); border-color: var(--amber); }
 .dot.future { opacity: .35; }
-.legend { color: var(--muted); font-size: 13px; margin: 0; }
-
-/* 紀錄 */
-.log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.log li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 4px 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+.legend { color: var(--ink-faint); font-size: 12px; }
+.log { list-style: none; display: flex; flex-direction: column; }
+.log li { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 4px 12px; padding: 10px 0; border-top: 1px solid var(--line); }
 .log li:first-child { border-top: 0; }
-.log .when { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.log .when { color: var(--ink-faint); font-size: 13px; font-variant-numeric: tabular-nums; }
 .log .what { min-width: 0; overflow-wrap: anywhere; }
-.log .what b { font-weight: 700; }
-.log .note { color: var(--muted); font-size: 15px; margin: 2px 0 0; }
-.log .reply { color: var(--leaf); font-size: 15px; margin: 2px 0 0; }
-.tag { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; margin-left: 6px; background: var(--warn-soft); color: var(--warn); }
-.tag.no { background: var(--line); color: var(--muted); }
-
-/* 彈出面板 */
-.sheet-wrap { position: fixed; inset: 0; background: rgba(10, 20, 14, .45); display: flex; align-items: flex-end; justify-content: center; z-index: 10; padding: 0 max(16px, env(safe-area-inset-left, 0px)) env(safe-area-inset-bottom, 0px); }
-.sheet { width: 100%; max-width: 560px; background: var(--surface); border-radius: 20px 20px 0 0; padding: 18px 16px 20px; display: flex; flex-direction: column; gap: 12px; }
-.msg { color: var(--muted); text-align: center; padding: 40px 8px; }
-.bonus summary { cursor: pointer; font-weight: 700; min-height: 32px; }
-.bonus-body { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
-.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-size: 15px; z-index: 20; }
+.log .what b { font-weight: 500; }
+.log .note { color: var(--ink-soft); font-size: 14px; }
+.log .reply { color: var(--leaf); font-size: 14px; }
+.tag { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; margin-left: 6px; background: var(--amber-soft); color: var(--amber); }
+.tag.no { background: rgba(255,255,255,.1); color: var(--ink-faint); }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(24px + env(safe-area-inset-bottom, 0px)); background: rgba(255,255,255,.92); color: #111; padding: 10px 18px; border-radius: 999px; font-size: 14px; z-index: 30; }
+.msg { padding: 24px; text-align: center; color: var(--ink-soft); max-width: 320px; margin-top: 30vh; }
+@media (max-height: 560px) { .hero { margin-top: 6px; } .num { font-size: 52px; } .meal { min-height: 58px; padding: 8px 4px; } }
 @media (prefers-reduced-motion: reduce) { .flower.new { animation: none; } }
 </style>
-</head><body>
-<div id="hero-root"></div>
-<main id="app"><p class="msg">花園準備中…</p></main>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <radialGradient id="petalG" cx=".5" cy=".95" r=".95"><stop offset="0" stop-color="#2a050b"/><stop offset=".3" stop-color="#780b1d"/><stop offset=".68" stop-color="#b41d33"/><stop offset="1" stop-color="#d9475a"/></radialGradient>
+  <linearGradient id="petalHi" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <radialGradient id="centerG" cx=".5" cy=".4" r=".7"><stop offset="0" stop-color="#3b1626"/><stop offset="1" stop-color="#07030a"/></radialGradient>
+  <linearGradient id="stemG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#1b3a24"/><stop offset=".5" stop-color="#4a8556"/><stop offset="1" stop-color="#1b3a24"/></linearGradient>
+  <linearGradient id="leafG" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#24492f"/><stop offset="1" stop-color="#5f9a62"/></linearGradient>
+  <radialGradient id="baseShadow"><stop offset="0" stop-color="#000" stop-opacity=".6"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+</defs></svg>
+<div id="stage">
+  <video id="bg" src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260619_191346_9d19d66e-86a4-47f7-8dc6-712c1788c3b2.mp4" autoplay muted loop playsinline></video>
+  <div id="orb-layer"></div>
+  <div id="ui"></div>
+</div>
 <div id="sheet-root"></div>
 <div id="toast-root"></div>
-
 <script src="config.js"></script>
 <script>
 (function () {
@@ -174,23 +146,15 @@ input[type=text] { width: 100%; font: inherit; color: var(--ink); background: va
     { key: "lunch", name: "午餐" },
     { key: "dinner", name: "晚餐" }
   ];
-  // 獎勵兌換先關閉。之後打開時：花的餘額 = 已確認的花 - 已兌換的花，兌換紀錄放在 rewards 集合。
+  var HER = "安安老大", HIM = "丞丞";
+  // 獎勵兌換先關閉。之後打開時：花的餘額 = 已確認的花 - 已兌換的花，兌換紀錄放在 rewards 資料表。
   var REWARDS_ENABLED = false;
+  // 影片尺寸與玻璃球在影片中的位置（以影片寬高為基準的比例）
+  var VID = { w: 3828, h: 2164 };
+  var ORB = { cx: 0.506, cy: 0.718, rx: 0.1413, ry: 0.2356 };
 
   var cfg = window.GARDEN_CONFIG || {};
-  var db = null, isHer = true, docs = [], loaded = false, prevCount = null, busy = false;
-  function api(path, opts) {
-    opts = opts || {};
-    var h = { apikey: cfg.SUPABASE_ANON_KEY, "Content-Type": "application/json" };
-    if (cfg.SUPABASE_ANON_KEY.indexOf("eyJ") === 0) h.Authorization = "Bearer " + cfg.SUPABASE_ANON_KEY;
-    if (opts.prefer) h.Prefer = opts.prefer;
-    return fetch(cfg.SUPABASE_URL + "/rest/v1/" + path, { method: opts.method || "GET", headers: h, body: opts.body ? JSON.stringify(opts.body) : undefined })
-      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.status === 204 ? null : r.text().then(function (t) { return t ? JSON.parse(t) : null; }); });
-  }
-  async function refresh() {
-    try { docs = await api("meals?select=*&order=ts.desc&limit=500"); loaded = true; render(); }
-    catch (e) { if (!loaded) { toast("連不上資料庫，請檢查設定"); } }
-  }
+  var isHer = true, docs = [], loaded = false, prevCount = null, busy = false, started = false;
 
   // ---------- 小工具 ----------
   function el(tag, attrs, kids) {
@@ -213,6 +177,7 @@ input[type=text] { width: 100%; font: inherit; color: var(--ink); background: va
   }
   function pad(n) { return n < 10 ? "0" + n : "" + n; }
   function dateKey(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function shortDate(k) { var p = k.split("-"); return +p[1] + "/" + +p[2]; }
   function mealName(k) { for (var i = 0; i < MEALS.length; i++) if (MEALS[i].key === k) return MEALS[i].name; return "特別加花"; }
   function toast(t) {
     var r = document.getElementById("toast-root");
@@ -224,37 +189,111 @@ input[type=text] { width: 100%; font: inherit; color: var(--ink); background: va
 
   // ---------- 花 ----------
   function seeded(i) { var x = Math.sin(i * 9301 + 49297) * 233280; return x - Math.floor(x); }
+  // 寫實風：有光影的花瓣、暗色花心、細莖與葉，漸層放在頁面共用的 <defs>
   function flowerSVG(i, cls) {
-    var r1 = seeded(i + 1), r2 = seeded(i + 7), r3 = seeded(i + 13);
-    var lean = (r1 - 0.5) * 16, scale = 0.85 + r2 * 0.25, petals = 5, hueShift = Math.round((r3 - 0.5) * 10);
+    var r = function (k) { return seeded(i * 7 + k); };
     var s = svg("svg", { viewBox: "0 0 48 64", class: cls || "flower", "aria-hidden": "true" });
-    var g = svg("g", { transform: "translate(24 62) rotate(" + lean.toFixed(1) + ") scale(" + scale.toFixed(2) + ") translate(-24 -62)" });
-    g.appendChild(svg("path", { d: "M24 62 C24 50 24 42 24 30", stroke: "var(--leaf)", "stroke-width": "2.6", fill: "none", "stroke-linecap": "round" }));
-    g.appendChild(svg("path", { d: "M24 50 C16 48 13 43 13 38 C20 38 24 43 24 50 Z", fill: "var(--leaf)" }));
-    for (var p = 0; p < petals; p++) {
-      var a = p * (360 / petals);
-      g.appendChild(svg("ellipse", { cx: "24", cy: "17", rx: "6.2", ry: "9", fill: "var(--red)", transform: "rotate(" + a + " 24 26)", opacity: (0.92 - hueShift * 0.004).toFixed(2) }));
+    var lean = (r(1) - 0.5) * 14, hx = 24 + lean * 0.35;
+    var g = svg("g", { transform: "translate(24 63) rotate(" + (lean * 0.5).toFixed(1) + ") translate(-24 -63)" });
+    // 根部陰影
+    g.appendChild(svg("ellipse", { cx: "24", cy: "62.5", rx: "7", ry: "1.6", fill: "url(#baseShadow)" }));
+    // 莖
+    g.appendChild(svg("path", { d: "M24 63 C23.4 52 " + (hx - 0.6).toFixed(1) + " 40 " + hx.toFixed(1) + " 27", stroke: "url(#stemG)", "stroke-width": "1.7", fill: "none", "stroke-linecap": "round" }));
+    // 葉
+    var side = r(2) > 0.5 ? 1 : -1, ly = 44 + r(3) * 6;
+    g.appendChild(svg("path", { d: "M24 " + ly + " C" + (24 + side * 8) + " " + (ly - 2) + " " + (24 + side * 11) + " " + (ly - 9) + " " + (24 + side * 10) + " " + (ly - 12) + " C" + (24 + side * 5) + " " + (ly - 9) + " " + (24 + side * 1.5) + " " + (ly - 5) + " 24 " + ly + " Z", fill: "url(#leafG)" }));
+    g.appendChild(svg("path", { d: "M24 " + ly + " C" + (24 + side * 5) + " " + (ly - 3) + " " + (24 + side * 8) + " " + (ly - 7) + " " + (24 + side * 10) + " " + (ly - 11), stroke: "rgba(10,30,15,.45)", "stroke-width": ".35", fill: "none" }));
+    // 花頭：斜著看，所以上下壓扁
+    var head = svg("g", { transform: "translate(" + hx.toFixed(1) + " 24) rotate(" + ((r(4) - 0.5) * 24).toFixed(1) + ") scale(1 .68)" });
+    var n = 5 + Math.floor(r(5) * 2), off = r(6) * 60, petals = [];
+    for (var p = 0; p < n; p++) {
+      var a = off + p * (360 / n) + (r(10 + p) - 0.5) * 12;
+      petals.push({ a: a, len: 0.9 + r(20 + p) * 0.22 });
     }
-    g.appendChild(svg("circle", { cx: "24", cy: "26", r: "4.6", fill: "var(--soil)" }));
-    g.appendChild(svg("circle", { cx: "24", cy: "26", r: "1.8", fill: "var(--surface)" }));
+    petals.sort(function (x, y) { return Math.cos(y.a * Math.PI / 180) - Math.cos(x.a * Math.PI / 180); });
+    petals.forEach(function (pt) {
+      var pg = svg("g", { transform: "rotate(" + pt.a.toFixed(1) + ") scale(" + (0.92).toFixed(2) + " " + pt.len.toFixed(2) + ")" });
+      pg.appendChild(svg("path", { d: "M0 0 C-7.5 -2.5 -10.5 -13 -5.5 -19.5 C-2.5 -23 2.5 -23 5.5 -19.5 C10.5 -13 7.5 -2.5 0 0 Z", fill: "url(#petalG)" }));
+      pg.appendChild(svg("path", { d: "M0 -1 C-1 -8 -1 -14 0 -20 M-2.5 -3 C-4 -9 -4 -13 -3.5 -17 M2.5 -3 C4 -9 4 -13 3.5 -17", stroke: "rgba(60,0,12,.32)", "stroke-width": ".4", fill: "none" }));
+      pg.appendChild(svg("ellipse", { cx: "-2", cy: "-15", rx: "2.2", ry: "5", fill: "url(#petalHi)", transform: "rotate(-12 -2 -15)" }));
+      head.appendChild(pg);
+    });
+    head.appendChild(svg("circle", { cx: "0", cy: "0", r: "4.3", fill: "url(#centerG)" }));
+    for (var d = 0; d < 9; d++) {
+      var ang = d * 40 + r(40) * 30;
+      head.appendChild(svg("circle", { cx: (Math.cos(ang * Math.PI / 180) * 3.4).toFixed(2), cy: (Math.sin(ang * Math.PI / 180) * 3.4).toFixed(2), r: ".55", fill: "#d8b25c", opacity: ".85" }));
+    }
+    g.appendChild(head);
     s.appendChild(g);
     return s;
   }
 
-  // ---------- 資料整理 ----------
+  // 影片是 object-fit: cover，算出玻璃球在畫面上的實際位置
+  function orbGeom() {
+    var stage = document.getElementById("stage");
+    var vw = stage.clientWidth, vh = stage.clientHeight;
+    var s = Math.max(vw / VID.w, vh / VID.h);
+    var ox = (vw - VID.w * s) / 2, oy = (vh - VID.h * s) / 2;
+    return { cx: ox + ORB.cx * VID.w * s, cy: oy + ORB.cy * VID.h * s, rx: ORB.rx * VID.w * s, ry: ORB.ry * VID.h * s };
+  }
+  function renderOrb(confirmed) {
+    var layer = document.getElementById("orb-layer");
+    layer.textContent = "";
+    var g = orbGeom(), n = confirmed.length;
+    var bx = g.cx, by = g.cy + 0.44 * g.ry, hw = 0.82 * g.rx, hh = 0.34 * g.ry;
+    if (!n) {
+      layer.appendChild(el("div", { class: "orb-hint", style: "left:" + g.cx + "px;top:" + (g.cy + 0.2 * g.ry) + "px", text: "第一朵花，等你吃完飯種下" }));
+      return;
+    }
+    var hF = Math.max(g.ry * 0.34, Math.min(g.ry * 0.6, g.ry * 0.6 * Math.sqrt(10 / Math.max(n, 10))));
+    var M = 40, items = [];
+    confirmed.forEach(function (d, i) {
+      var k = i % M, wrap = Math.floor(i / M);
+      var r = Math.sqrt((k + 0.5) / M) * (wrap ? 0.92 : 1), a = i * 2.39996 + wrap * 0.7;
+      items.push({ i: i, x: bx + Math.cos(a) * hw * r + (seeded(i + 90) - 0.5) * hF * 0.5, y: by + Math.sin(a) * hh * r + wrap * 3 + (seeded(i + 91) - 0.5) * hF * 0.3 });
+    });
+    items.sort(function (a, b) { return a.y - b.y; });
+    items.forEach(function (it) {
+      var isNew = prevCount !== null && n > prevCount && it.i >= prevCount;
+      var f = flowerSVG(it.i, "flower" + (isNew ? " new" : ""));
+      var dp = Math.max(0, Math.min(1, (it.y - (by - hh)) / (2 * hh)));
+      f.style.filter = "blur(" + ((1 - dp) * 0.7).toFixed(2) + "px) brightness(" + (0.72 + 0.3 * dp).toFixed(2) + ") saturate(.92)";
+      f.style.height = hF + "px"; f.style.width = (hF * 0.75) + "px";
+      f.style.left = (it.x - hF * 0.375) + "px"; f.style.top = (it.y - hF) + "px";
+      layer.appendChild(f);
+    });
+  }
+
+  // ---------- 資料 ----------
+  function api(path, opts) {
+    opts = opts || {};
+    var h = { apikey: cfg.SUPABASE_ANON_KEY, "Content-Type": "application/json" };
+    if (cfg.SUPABASE_ANON_KEY.indexOf("eyJ") === 0) h.Authorization = "Bearer " + cfg.SUPABASE_ANON_KEY;
+    if (opts.prefer) h.Prefer = opts.prefer;
+    return fetch(cfg.SUPABASE_URL + "/rest/v1/" + path, { method: opts.method || "GET", headers: h, body: opts.body ? JSON.stringify(opts.body) : undefined })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.status === 204 ? null : r.text().then(function (t) { return t ? JSON.parse(t) : null; }); });
+  }
+  async function refresh() {
+    try { docs = await api("meals?select=*&order=ts.desc&limit=500"); loaded = true; render(); }
+    catch (e) { if (!loaded) toast("連不上資料庫，請檢查設定"); }
+  }
   function derive() {
-    var confirmed = docs.filter(function (d) { return d.status === "confirmed"; });
+    var confirmed = docs.filter(function (d) { return d.status === "confirmed"; }).sort(function (a, b) { return (a.ts || 0) - (b.ts || 0); });
     var byDay = {};
     confirmed.forEach(function (d) { byDay[d.date] = (byDay[d.date] || 0) + 1; });
     var streak = 0, cur = new Date();
     if (!byDay[dateKey(cur)]) cur.setDate(cur.getDate() - 1);
     while (byDay[dateKey(cur)]) { streak++; cur.setDate(cur.getDate() - 1); }
-    return { confirmed: confirmed, byDay: byDay, streak: streak };
+    var t = new Date(), mon = new Date(t); mon.setDate(t.getDate() - ((t.getDay() + 6) % 7));
+    var from = dateKey(mon), week = 0;
+    confirmed.forEach(function (d) { if (d.date >= from) week++; });
+    return { confirmed: confirmed, streak: streak, week: week };
   }
   function slotDoc(date, meal) {
     for (var i = 0; i < docs.length; i++) if (docs[i].date === date && docs[i].meal === meal) return docs[i];
     return null;
   }
+  function pendingDocs() { return docs.filter(function (d) { return d.status === "pending"; }).sort(function (a, b) { return a.ts - b.ts; }); }
 
   // ---------- 寫入 ----------
   async function write(fn, okMsg) {
@@ -267,140 +306,67 @@ input[type=text] { width: 100%; font: inherit; color: var(--ink); background: va
   }
   function claim(meal, note) {
     var today = dateKey(new Date());
-    var data = { date: today, meal: meal, status: isHer ? "pending" : "confirmed", note: note || "", reply: "", ts: Date.now() };
-    return write(function () { data.id = today + "_" + meal; return api("meals?on_conflict=id", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: data }); }, isHer ? "已送出，等丞丞確認" : "已幫安安老大記上一朵");
+    var data = { id: today + "_" + meal, date: today, meal: meal, status: isHer ? "pending" : "confirmed", note: note || "", reply: "", ts: Date.now() };
+    return write(function () { return api("meals?on_conflict=id", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: data }); }, isHer ? "已送出，等" + HIM + "確認" : "已幫" + HER + "記上一朵");
   }
   function confirmDoc(d, reply) {
-    return write(function () { return api("meals?id=eq." + encodeURIComponent(d.id), { method: "PATCH", prefer: "return=minimal", body: { status: "confirmed", reply: reply || "", ts: Date.now() } }); }, "已確認，花園長出一朵");
+    return write(function () { return api("meals?id=eq." + encodeURIComponent(d.id), { method: "PATCH", prefer: "return=minimal", body: { status: "confirmed", reply: reply || "", ts: Date.now() } }); }, "已確認，玻璃球裡長出一朵");
   }
   function rejectDoc(d, reply) {
     return write(function () { return api("meals?id=eq." + encodeURIComponent(d.id), { method: "PATCH", prefer: "return=minimal", body: { status: "rejected", reply: reply || "" } }); }, "已退回");
   }
   function addBonus(reason) {
     var today = dateKey(new Date()), ts = Date.now();
-    return write(function () {
-      return api("meals", { method: "POST", prefer: "return=minimal", body: { id: today + "_bonus_" + ts, date: today, meal: "bonus", status: "confirmed", note: reason || "", reply: "", ts: ts } });
-    }, "特別加一朵");
+    return write(function () { return api("meals", { method: "POST", prefer: "return=minimal", body: { id: today + "_bonus_" + ts, date: today, meal: "bonus", status: "confirmed", note: reason || "", reply: "", ts: ts } }); }, "特別加一朵");
   }
 
   // ---------- 彈出面板 ----------
-  function openSheet(title, placeholder, okLabel, onOk) {
+  function closeSheet() { document.getElementById("sheet-root").textContent = ""; }
+  function openPanel(kids) {
     var root = document.getElementById("sheet-root");
     root.textContent = "";
-    var input = el("input", { type: "text", id: "sheet-input", placeholder: placeholder, maxlength: "80", "aria-label": placeholder });
-    function close() { root.textContent = ""; }
-    var wrap = el("div", { class: "sheet-wrap", onclick: function (e) { if (e.target === wrap) close(); } }, [
-      el("div", { class: "sheet", role: "dialog", "aria-label": title }, [
-        el("h2", { text: title }),
-        input,
-        el("div", { class: "row" }, [
-          el("button", { class: "btn primary", text: okLabel, onclick: function () { var v = input.value.trim(); close(); onOk(v); } }),
-          el("button", { class: "btn ghost", text: "取消", onclick: close })
-        ])
-      ])
+    var wrap = el("div", { class: "sheet-wrap", onclick: function (e) { if (e.target === wrap) closeSheet(); } }, [
+      el("div", { class: "sheet", role: "dialog" }, kids)
     ]);
     root.appendChild(wrap);
-    input.focus();
   }
-
-  // ---------- 畫面 ----------
-  function render() {
-    var app = document.getElementById("app");
-    app.textContent = "";
-    if (!db) {
-      app.appendChild(el("p", { class: "msg", text: "還沒設定資料庫。請照 README 填好 config.js。" }));
-      return;
-    }
-    var info = derive();
-    var count = info.confirmed.length;
-    var today = new Date(), todayKey = dateKey(today);
-
-    // 頂部
-    var hero = el("section", { class: "hero" }, [
-      el("p", { class: "eyebrow", text: isHer ? "今天也要乖乖吃飯" : "安安老大的小紅花" }),
-      el("div", { class: "count" }, [
-        el("span", { class: "num", text: String(count) }),
-        el("span", { class: "unit", text: "朵小紅花" })
-      ]),
-      el("div", { class: "chips" }, [
-        el("span", { class: "chip" }, ["連續 ", el("b", { text: String(info.streak) }), " 天"]),
-        el("span", { class: "chip" }, ["本週 ", el("b", { text: String(weekCount(info)) }), " 朵"])
+  function openInput(title, placeholder, okLabel, onOk) {
+    var input = el("input", { type: "text", id: "sheet-input", placeholder: placeholder, maxlength: "80", "aria-label": placeholder });
+    openPanel([
+      el("h2", { text: title }), input,
+      el("div", { class: "row" }, [
+        el("button", { class: "btn primary", text: okLabel, onclick: function () { var v = input.value.trim(); closeSheet(); onOk(v); } }),
+        el("button", { class: "btn ghost", text: "取消", onclick: closeSheet })
       ])
     ]);
-    app.appendChild(hero);
-
-    // 花園
-    var grid = el("div", { class: "garden-grid" });
-    if (!count) grid.appendChild(el("div", { class: "garden-empty", text: "花園還空著，第一朵花等你吃完飯長出來。" }));
-    var sorted = info.confirmed.slice().sort(function (a, b) { return (a.ts || 0) - (b.ts || 0); });
-    sorted.forEach(function (d, i) {
-      var isNew = prevCount !== null && count > prevCount && i >= prevCount;
-      grid.appendChild(flowerSVG(i, "flower" + (isNew ? " new" : "")));
-    });
-    app.appendChild(el("section", { id: "garden", class: "garden", "aria-label": "花園，共 " + count + " 朵" }, [grid, el("div", { class: "soil" })]));
-    prevCount = count;
-
-    // 他：待確認
-    if (!isHer) {
-      var pend = docs.filter(function (d) { return d.status === "pending"; }).sort(function (a, b) { return a.ts - b.ts; });
-      var pl = el("div", { class: "pending-list" });
-      if (!pend.length) pl.appendChild(el("p", { class: "legend", text: "目前沒有等你確認的。" }));
-      pend.forEach(function (d) {
-        var note = d.note ? el("p", { class: "quote", text: "安安老大說：" + d.note }) : null;
-        pl.appendChild(el("div", { class: "pitem" }, [
-          el("div", { class: "who", text: shortDate(d.date) + " " + mealName(d.meal) + "，安安老大說吃完了" }),
-          note,
-          el("div", { class: "row" }, [
-            el("button", { class: "btn primary", text: "確認，給安安老大一朵", onclick: function () { openSheet("想對安安老大說什麼？", "例如：今天好棒（可留空）", "確認", function (v) { confirmDoc(d, v); }); } }),
-            el("button", { class: "btn", text: "退回", onclick: function () { openSheet("退回原因", "例如：還沒吃完喔（可留空）", "退回", function (v) { rejectDoc(d, v); }); } })
-          ])
-        ]));
-      });
-      app.appendChild(el("section", { class: "panel" }, [
-        el("div", { class: "panel-head" }, [el("h2", { text: "等你確認" }), el("span", { text: pend.length ? pend.length + " 筆" : "" })]),
-        pl
-      ]));
-    }
-
-    // 今天三餐
-    var mealsEl = el("div", { class: "meals" });
-    MEALS.forEach(function (m) {
-      var d = slotDoc(todayKey, m.key);
-      var cls = "meal open", state = isHer ? "我吃完了" : "代記", disabled = false;
-      if (d && d.status === "confirmed") { cls = "meal done"; state = "已領 🌸"; disabled = true; }
-      else if (d && d.status === "pending") { cls = "meal pending"; state = "等丞丞確認"; disabled = isHer; if (!isHer) state = "待確認"; }
-      else if (d && d.status === "rejected") { state = "再領一次"; }
-      var kids = [el("span", { class: "name", text: m.name }), el("span", { class: "state", text: state.replace(" 🌸", "") })];
-      if (d && d.status === "confirmed") kids.unshift(flowerSVG(0, "mini"));
-      var btn = el("button", {
-        class: cls, disabled: disabled ? "" : false,
-        "aria-label": m.name + "，" + state,
-        onclick: function () {
-          if (!isHer && d && d.status === "pending") return;
-          openSheet(isHer ? "吃完" + m.name + "了嗎？" : "幫安安老大記上" + m.name, isHer ? "想跟丞丞說什麼？（可留空）" : "備註（可留空）", isHer ? "送出" : "記上一朵", function (v) { claim(m.key, v); });
-        }
-      }, kids);
-      if (disabled) btn.setAttribute("disabled", "");
-      mealsEl.appendChild(btn);
-    });
-    var todayPanel = [
-      el("div", { class: "panel-head" }, [el("h2", { text: "今天" }), el("span", { text: (today.getMonth() + 1) + " 月 " + today.getDate() + " 日" })]),
-      mealsEl
-    ];
-    if (!isHer) {
-      todayPanel.push(el("details", { class: "bonus" }, [
-        el("summary", { text: "特殊情況，額外加一朵" }),
-        el("div", { class: "bonus-body" }, [
-          el("input", { type: "text", id: "bonus-reason", placeholder: "原因，例如：生病還是有吃藥", maxlength: "80", "aria-label": "額外加花的原因" }),
-          el("div", { class: "row" }, [el("button", { class: "btn primary", text: "加一朵", onclick: function () { var v = document.getElementById("bonus-reason").value.trim(); addBonus(v); } })])
+    input.focus();
+  }
+  function openPending() {
+    var pend = pendingDocs();
+    var kids = [el("h2", { text: "等你確認" })];
+    if (!pend.length) kids.push(el("p", { class: "legend", text: "目前沒有等你確認的。" }));
+    pend.forEach(function (d) {
+      kids.push(el("div", { class: "pitem" }, [
+        el("div", { class: "who", text: shortDate(d.date) + " " + mealName(d.meal) + "，" + HER + "說吃完了" }),
+        d.note ? el("p", { class: "quote", text: HER + "說：" + d.note }) : null,
+        el("div", { class: "row" }, [
+          el("button", { class: "btn primary", text: "確認，給她一朵", onclick: function () { openInput("想對" + HER + "說什麼？", "例如：今天好棒（可留空）", "確認", function (v) { confirmDoc(d, v); }); } }),
+          el("button", { class: "btn", text: "退回", onclick: function () { openInput("退回原因", "例如：還沒吃完喔（可留空）", "退回", function (v) { rejectDoc(d, v); }); } })
         ])
       ]));
-    }
-    app.appendChild(el("section", { id: "today", class: "panel" }, todayPanel));
-
-    // 本週
+    });
+    var reason = el("input", { type: "text", id: "bonus-reason", placeholder: "原因，例如：生病還是有吃藥", maxlength: "80", "aria-label": "額外加花的原因" });
+    kids.push(el("h3", { text: "特殊情況，額外加一朵" }), reason,
+      el("div", { class: "row" }, [
+        el("button", { class: "btn primary", text: "加一朵", onclick: function () { var v = reason.value.trim(); closeSheet(); addBonus(v); } }),
+        el("button", { class: "btn ghost", text: "關閉", onclick: closeSheet })
+      ]));
+    openPanel(kids);
+  }
+  function openRecords() {
+    var today = new Date(), todayKey = dateKey(today);
     var week = el("div", { class: "week" });
-    var mon = new Date(today); var wd = (mon.getDay() + 6) % 7; mon.setDate(mon.getDate() - wd);
+    var mon = new Date(today); mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
     var names = ["一", "二", "三", "四", "五", "六", "日"];
     for (var i = 0; i < 7; i++) {
       var dt = new Date(mon); dt.setDate(mon.getDate() + i);
@@ -412,66 +378,116 @@ input[type=text] { width: 100%; font: inherit; color: var(--ink); background: va
       });
       week.appendChild(el("div", { class: "day" + (k === todayKey ? " today" : "") }, [el("span", { class: "d", text: names[i] }), dots]));
     }
-    app.appendChild(el("section", { id: "week", class: "panel" }, [
-      el("h2", { text: "本週" }), week,
-      el("p", { class: "legend", text: "每天三顆點，由上到下是早餐、午餐、晚餐。紅色是已領，黃色是等確認。" })
-    ]));
-
-    // 紀錄
-    var visible = docs.filter(function (d) { return d.status !== "rejected" || !isHer ? true : true; })
-      .sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); }).slice(0, 40);
     var log = el("ul", { class: "log" });
-    if (!visible.length) log.appendChild(el("li", {}, [el("span", { class: "when" }), el("span", { class: "what", text: "還沒有紀錄。" })]));
-    visible.forEach(function (d) {
+    var list = docs.slice().sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); }).slice(0, 40);
+    if (!list.length) log.appendChild(el("li", {}, [el("span", { class: "when" }), el("span", { class: "what", text: "還沒有紀錄。" })]));
+    list.forEach(function (d) {
       var tag = d.status === "pending" ? el("span", { class: "tag", text: "等確認" }) : d.status === "rejected" ? el("span", { class: "tag no", text: "已退回" }) : null;
       log.appendChild(el("li", {}, [
         el("span", { class: "when", text: shortDate(d.date) }),
         el("div", { class: "what" }, [
           el("div", {}, [el("b", { text: mealName(d.meal) }), tag]),
-          d.note ? el("p", { class: "note", text: (isHer ? "我：" : "安安老大：") + d.note }) : null,
-          d.reply ? el("p", { class: "reply", text: (isHer ? "丞丞：" : "我：") + d.reply }) : null
+          d.note ? el("p", { class: "note", text: (isHer ? "我：" : HER + "：") + d.note }) : null,
+          d.reply ? el("p", { class: "reply", text: (isHer ? HIM + "：" : "我：") + d.reply }) : null
         ])
       ]));
     });
-    app.appendChild(el("section", { id: "log", class: "panel" }, [el("h2", { text: "領花紀錄" }), log]));
+    openPanel([
+      el("h2", { text: "本週與紀錄" }), week,
+      el("p", { class: "legend", text: "每天三顆點，由上到下是早餐、午餐、晚餐。紅色是已領，黃色是等確認。" }),
+      el("h3", { text: "領花紀錄" }), log,
+      el("div", { class: "row" }, [
+        el("button", { class: "btn ghost", text: "換身分", onclick: function () { try { localStorage.removeItem("garden-role"); } catch (e) {} location.reload(); } }),
+        el("button", { class: "btn", text: "關閉", onclick: closeSheet })
+      ])
+    ]);
   }
 
-  function shortDate(k) { var p = k.split("-"); return +p[1] + "/" + +p[2]; }
-  function weekCount(info) {
-    var t = new Date(), mon = new Date(t); mon.setDate(t.getDate() - ((t.getDay() + 6) % 7));
-    var from = dateKey(mon), n = 0;
-    info.confirmed.forEach(function (d) { if (d.date >= from) n++; });
-    return n;
+  // ---------- 畫面 ----------
+  function render() {
+    var ui = document.getElementById("ui");
+    ui.textContent = "";
+    if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) { ui.appendChild(el("p", { class: "msg", text: "還沒設定資料庫，請填好 config.js。" })); return; }
+    if (!started) return;
+    var info = derive(), count = info.confirmed.length;
+    var todayKey = dateKey(new Date());
+    var pend = pendingDocs();
+
+    var actions = el("div", { class: "actions" });
+    if (!isHer) {
+      var pb = el("button", { class: "pill liquid-glass", "aria-label": "等你確認", onclick: openPending }, ["確認", pend.length ? el("span", { class: "badge", text: String(pend.length) }) : null]);
+      actions.appendChild(pb);
+    }
+    actions.appendChild(el("button", { class: "pill liquid-glass", text: "紀錄", onclick: openRecords }));
+    ui.appendChild(el("div", { class: "top" }, [
+      el("div", { class: "brand" }, ["Little Red Flower", el("small", { text: isHer ? HER : HIM })]),
+      actions
+    ]));
+
+    ui.appendChild(el("div", { class: "hero" }, [
+      el("p", { class: "eyebrow", text: isHer ? "TODAY IS FOR EATING WELL" : HER + "的小紅花" }),
+      el("div", { class: "count" }, [el("span", { class: "num", text: String(count) }), el("span", { class: "unit", text: "朵小紅花" })]),
+      el("div", { class: "chips" }, [
+        el("span", {}, ["連續 ", el("b", { text: String(info.streak) }), " 天"]),
+        el("span", {}, ["本週 ", el("b", { text: String(info.week) }), " 朵"])
+      ])
+    ]));
+
+    var mealsEl = el("div", { class: "meals" });
+    var openCount = 0;
+    MEALS.forEach(function (m) {
+      var d = slotDoc(todayKey, m.key);
+      var cls = "meal liquid-glass open", state = isHer ? "我吃完了" : "代她記", disabled = false;
+      if (d && d.status === "confirmed") { cls = "meal liquid-glass done"; state = "已領"; disabled = true; }
+      else if (d && d.status === "pending") { cls = "meal liquid-glass pending"; state = isHer ? "等" + HIM + "確認" : "待確認"; disabled = true; }
+      else if (d && d.status === "rejected") { state = "再領一次"; }
+      if (!disabled) openCount++;
+      var kids = [el("span", { class: "name", text: m.name }), el("span", { class: "state", text: state })];
+      if (d && d.status === "confirmed") kids.unshift(flowerSVG(0, "mini"));
+      mealsEl.appendChild(el("button", {
+        class: cls, disabled: disabled ? "" : false, "aria-label": m.name + "，" + state,
+        onclick: function () {
+          openInput(isHer ? "吃完" + m.name + "了嗎？" : "幫" + HER + "記上" + m.name, isHer ? "想跟" + HIM + "說什麼？（可留空）" : "備註（可留空）", isHer ? "送出" : "記上一朵", function (v) { claim(m.key, v); });
+        }
+      }, kids));
+    });
+    ui.appendChild(mealsEl);
+    var cap = !isHer && pend.length ? pend.length + " 筆等你確認" : (!openCount ? "今天三餐都記好了" : "");
+    ui.appendChild(el("p", { class: "caption", text: cap }));
+
+    renderOrb(info.confirmed);
+    prevCount = count;
   }
 
   // ---------- 啟動 ----------
   function chooseRole() {
-    var app = document.getElementById("app");
-    app.textContent = "";
-    app.appendChild(el("section", { class: "panel" }, [
-      el("h2", { text: "你是誰？" }),
-      el("div", { class: "row" }, [
-        el("button", { class: "btn primary", text: "安安老大", onclick: function () { setRole("her"); } }),
-        el("button", { class: "btn", text: "丞丞", onclick: function () {
-          openSheet("輸入密語", "密語", "進入", function (v) { if (v === cfg.HIS_PIN) setRole("him"); else { toast("密語不對"); chooseRole(); } });
-        } })
+    var ui = document.getElementById("ui");
+    ui.textContent = "";
+    ui.appendChild(el("div", { class: "hero" }, [
+      el("p", { class: "eyebrow", text: "WHO ARE YOU" }),
+      el("div", { class: "meals", style: "margin-top:20px;grid-template-columns:repeat(2,minmax(0,1fr))" }, [
+        el("button", { class: "meal liquid-glass open", onclick: function () { setRole("her"); } }, [el("span", { class: "name", text: HER })]),
+        el("button", { class: "meal liquid-glass open", onclick: function () {
+          openInput("輸入密語", "密語", "進入", function (v) { if (v === cfg.HIS_PIN) setRole("him"); else { toast("密語不對"); } });
+        } }, [el("span", { class: "name", text: HIM })])
       ])
     ]));
   }
   function setRole(r) { try { localStorage.setItem("garden-role", r); } catch (e) {} start(r); }
   function start(r) {
     isHer = r !== "him";
-    db = true;
+    started = true;
     render();
     refresh();
-    setInterval(function () { if (!busy && document.visibilityState === "visible") refresh(); }, 8000);
+    setInterval(function () { if (!busy && document.visibilityState === "visible" && !document.getElementById("sheet-root").firstChild) refresh(); }, 8000);
     document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") refresh(); });
   }
+  window.addEventListener("resize", function () { if (started) renderOrb(derive().confirmed); });
   if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) { render(); return; }
   var saved = null;
   try { saved = localStorage.getItem("garden-role"); } catch (e) {}
   if (saved === "her" || saved === "him") start(saved); else chooseRole();
 })();
 </script>
-<script type="module" src="hero.js"></script>
-</body></html>
+</body>
+</html>
