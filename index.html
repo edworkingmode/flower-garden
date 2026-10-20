@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>小紅花花園</title>
-<meta name="app-version" content="15">
+<meta name="app-version" content="16">
 <meta name="theme-color" content="#010101">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -47,6 +47,11 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outli
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 6%, #000 97%, transparent 100%);
   mask-image: linear-gradient(to bottom, transparent 0, #000 6%, #000 97%, transparent 100%); }
 .still-on #still { display: block; }
+.desk #bg, .desk #still {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 6%, #000 97%, transparent 100%), linear-gradient(to right, transparent 0, #000 12%, #000 88%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to bottom, transparent 0, #000 6%, #000 97%, transparent 100%), linear-gradient(to right, transparent 0, #000 12%, #000 88%, transparent 100%);
+  mask-composite: intersect; }
 .still-on #bg { visibility: hidden; }
 .pf { pointer-events: auto; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .pf.picked { transition: transform .25s ease; transform: scale(1.25); }
@@ -337,6 +342,13 @@ input::placeholder { color: var(--ink-faint); }
     var stage = document.getElementById("stage");
     var vw = stage.clientWidth, vh = stage.clientHeight;
     var target = Math.min(vw * 0.82, vh * 0.42);
+    if (ASSET === ASSETS.full) {
+      // 電腦版：玻璃球頂端必須在文字區下方，影片可以不撐滿寬度（左右用漸層淡出）
+      var hero = document.querySelector("#ui .hero"), heroBottom = hero ? hero.getBoundingClientRect().bottom : 0;
+      var scHero = (vh - DOCK_GAP - heroBottom - 20) / (VID.h * (1 - ORB.cy + ORB.ry));
+      var scD = Math.max(0.12, Math.min(target / (2 * ORB.rx * VID.w), scHero));
+      return { s: scD, left: vw / 2 - ORB.cx * VID.w * scD, top: vh - DOCK_GAP - VID.h * scD };
+    }
     var sc = Math.max(target / (2 * ORB.rx * VID.w), vw / VID.w);
     var left = vw / 2 - ORB.cx * VID.w * sc;
     left = Math.min(0, Math.max(vw - VID.w * sc, left));
@@ -895,6 +907,7 @@ input::placeholder { color: var(--ink-faint); }
     }
     if (Date.now() < hintUntil && dockPage === 0) ui.appendChild(el("div", { class: "swipe-hint", text: "← 左右滑動，看更多功能 →" }));
 
+    if (ASSET === ASSETS.full) layoutVideo();
     renderOrb(info.confirmed, fresh, garden);
   }
 
@@ -938,6 +951,7 @@ input::placeholder { color: var(--ink-faint); }
   // 背景：依裝置載入影片，播完換高清靜態圖；播不了就直接用靜態圖，靜態圖也失敗才用 CSS 玻璃球
   (function () {
     var v = document.getElementById("bg"), still = document.getElementById("still"), stage = document.getElementById("stage");
+    if (ASSET === ASSETS.full) stage.classList.add("desk");
     layoutVideo();
     v.muted = true; v.defaultMuted = true;
     v.poster = ASSET.start;
