@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>小紅花花園</title>
-<meta name="app-version" content="9">
+<meta name="app-version" content="10">
 <meta name="theme-color" content="#010101">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -43,6 +43,24 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outli
 #bg { position: absolute; display: block; max-width: none; object-fit: fill;
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 6%, #000 97%, transparent 100%);
   mask-image: linear-gradient(to bottom, transparent 0, #000 6%, #000 97%, transparent 100%); }
+#still { position: absolute; display: none; max-width: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 6%, #000 97%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 6%, #000 97%, transparent 100%); }
+.still-on #still { display: block; }
+.still-on #bg { visibility: hidden; }
+.pf { pointer-events: auto; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.pf.picked { transition: transform .25s ease; transform: scale(1.25); }
+.orb-glow { position: absolute; border-radius: 50%; pointer-events: none; z-index: 4; opacity: 0;
+  box-shadow: 0 0 70px 24px rgba(255, 90, 110, .45), inset 0 0 70px rgba(255, 150, 160, .35);
+  animation: orbglow 2.8s ease-out forwards; }
+@keyframes orbglow { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
+.num.pop { animation: numpop .5s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes numpop { 0% { transform: scale(1); } 40% { transform: scale(1.16); } 100% { transform: scale(1); } }
+.num { display: inline-block; }
+.dock .pages.peek .page { animation: peek 1.4s ease-in-out; }
+@keyframes peek { 0%, 100% { transform: none; } 40%, 60% { transform: translateX(-56px); } }
+.swipe-hint { position: absolute; left: 0; right: 0; bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + 86px); text-align: center; font-size: 12px; letter-spacing: .14em; color: var(--ink-soft); pointer-events: none; animation: hintfade 7s ease forwards; z-index: 6; }
+@keyframes hintfade { 0% { opacity: 0; } 10% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
 .conn { font-size: 12px; color: var(--amber); letter-spacing: .08em; }
 .msgcard { border-radius: 16px; padding: 14px; background: rgba(255,255,255,.06); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
 .msgcard small { color: var(--ink-faint); font-size: 12px; letter-spacing: .1em; }
@@ -63,7 +81,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outli
 .novideo #orb-fb { display: block; }
 #orb-dim { position: absolute; border-radius: 50%; pointer-events: none;
   background: linear-gradient(to bottom, rgba(0,0,0,0) 28%, rgba(0,0,0,.5) 55%, rgba(0,0,0,.62) 100%);
-  -webkit-backdrop-filter: saturate(.7); backdrop-filter: saturate(.7); }
+}
 .novideo #orb-dim { display: none; }
 #err { position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 40; background: rgba(120, 10, 20, .92); color: #fff; font-size: 12px; line-height: 1.4; padding: 8px 10px; border-radius: 8px; word-break: break-all; }
 .orb-hint { position: absolute; transform: translate(-50%, -50%); text-align: center; font-size: 13px; letter-spacing: .14em; color: var(--ink-soft); width: 160px; }
@@ -78,7 +96,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outli
 .brand { font-size: 12px; letter-spacing: .25em; text-transform: uppercase; color: var(--ink); min-width: 0; }
 .brand small { display: block; font-size: 11px; letter-spacing: .12em; color: var(--ink-faint); text-transform: none; margin-top: 2px; }
 .actions { display: flex; gap: 8px; }
-#ui .dock { position: absolute; left: 16px; right: 16px; margin: 0 auto; bottom: max(14px, env(safe-area-inset-bottom, 0px)); z-index: 6; max-width: 420px; display: block; padding: 6px 6px 22px; border-radius: 28px; pointer-events: auto; }
+#ui .dock { position: absolute; left: 16px; right: 16px; margin: 0 auto; bottom: max(14px, env(safe-area-inset-bottom, 0px)); z-index: 6; max-width: 420px; display: block; padding: 6px 6px 22px; border-radius: 28px; pointer-events: auto; -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(16, 18, 17, .74); }
 .dock .pages { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; overscroll-behavior-x: contain; }
 .dock .pages::-webkit-scrollbar { display: none; }
 .dock .page { flex: 0 0 100%; display: flex; gap: 4px; scroll-snap-align: center; scroll-snap-stop: always; }
@@ -95,6 +113,10 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outli
 .dock .mbtn.done .state { color: var(--red); }
 .dock .mbtn.pending { background: var(--amber-soft); cursor: default; }
 .dock .mbtn.pending .state { color: var(--amber); }
+.dock .mbtn.now { background: rgba(255,255,255,.07); box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.55); animation: nowpulse 2.4s ease-in-out infinite; }
+.dock .mbtn.now .state { color: var(--ink); }
+@keyframes nowpulse { 0%, 100% { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.55); } 50% { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.2); } }
+@media (prefers-reduced-motion: reduce) { .dock .mbtn.now, .num.pop, .orb-glow, .swipe-hint { animation: none; } .orb-glow { opacity: 0; } .swipe-hint { opacity: 1; } }
 .dock .tab { position: relative; flex: 1; min-width: 0; min-height: 52px; border-radius: 22px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 12px; letter-spacing: .1em; color: var(--ink-soft); }
 .dock .tab svg { width: 20px; height: 20px; }
 .dock .tab:active { background: rgba(255,255,255,.08); }
@@ -183,7 +205,8 @@ input::placeholder { color: var(--ink-faint); }
   <radialGradient id="baseShadow"><stop offset="0" stop-color="#000" stop-opacity=".6"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
 </defs></svg>
 <div id="stage">
-  <video id="bg" src="bg.mp4" autoplay muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
+  <video id="bg" autoplay muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
+  <img id="still" alt="">
   <div id="orb-layer"></div>
   <div id="ui"></div>
 </div>
@@ -202,12 +225,17 @@ input::placeholder { color: var(--ink-faint); }
   // 獎勵兌換先關閉。之後打開時：花的餘額 = 已確認的花 - 已兌換的花，兌換紀錄放在 rewards 資料表。
   var REWARDS_ENABLED = false;
   // 影片尺寸與玻璃球在影片中的位置（以影片寬高為基準的比例）
-  var VID = { w: 1920, h: 1086 };
-  var ORB = { cx: 0.506, cy: 0.718, rx: 0.1413, ry: 0.2356 };
+  var ASSETS = {
+    full: { video: "bg.mp4", start: "bg-start.jpg", end: "bg-end.jpg", w: 1920, h: 1086, orb: { cx: 0.506, cy: 0.718, rx: 0.1413, ry: 0.2356 } },
+    mobile: { video: "bg-m.mp4", start: "bg-m-start.jpg", end: "bg-m-end.jpg", w: 1440, h: 1464, orb: { cx: 0.5, cy: 0.5833, rx: 0.3757, ry: 0.3484 } }
+  };
+  var ASSET = (window.innerWidth <= 700 && window.innerHeight > window.innerWidth) ? ASSETS.mobile : ASSETS.full;
+  var VID = { w: ASSET.w, h: ASSET.h };
+  var ORB = ASSET.orb;
 
   var cfg = window.GARDEN_CONFIG || {};
   var isHer = true, docs = [], loaded = false, prevCount = null, busy = false, started = false;
-  var dockPage = 0, seenTs = null, animated = {}, cardShown = false, sheetOnClose = null, connText = "";
+  var dockPage = 0, shownCount = null, hintUntil = 0, hintChecked = false, seenTs = null, animated = {}, cardShown = false, sheetOnClose = null, connText = "";
   function seenKey() { return "garden-seen-" + (isHer ? "her" : "him"); }
   function saveSeen(t) { seenTs = t; try { localStorage.setItem(seenKey(), String(t)); } catch (e) {} }
   function loadSeen(maxTs) {
@@ -311,19 +339,23 @@ input::placeholder { color: var(--ink-faint); }
   }
 
   // 影片縮成約 75%、貼著下方，玻璃球水平置中；玻璃球位置跟著影片算
-  var ZOOM = 0.75, DOCK_GAP = 106;
+  var DOCK_GAP = 106;
   function vidLayout() {
     var stage = document.getElementById("stage");
     var vw = stage.clientWidth, vh = stage.clientHeight;
-    var sc = Math.max(vw / VID.w, ZOOM * vh / VID.h);
+    var target = Math.min(vw * 0.82, vh * 0.42);
+    var sc = Math.max(target / (2 * ORB.rx * VID.w), vw / VID.w);
     var left = vw / 2 - ORB.cx * VID.w * sc;
     left = Math.min(0, Math.max(vw - VID.w * sc, left));
     return { s: sc, left: left, top: vh - DOCK_GAP - VID.h * sc };
   }
   function layoutVideo() {
-    var L = vidLayout(), v = document.getElementById("bg");
-    v.style.left = L.left + "px"; v.style.top = L.top + "px";
-    v.style.width = (VID.w * L.s) + "px"; v.style.height = (VID.h * L.s) + "px";
+    var L = vidLayout();
+    ["bg", "still"].forEach(function (id) {
+      var v = document.getElementById(id);
+      v.style.left = L.left + "px"; v.style.top = L.top + "px";
+      v.style.width = (VID.w * L.s) + "px"; v.style.height = (VID.h * L.s) + "px";
+    });
   }
   function orbGeom_old() {
     var stage = document.getElementById("stage");
@@ -368,6 +400,7 @@ input::placeholder { color: var(--ink-faint); }
       if (isNew) { f.style.animationDelay = (bloomIdx++ * 0.25) + "s"; animated[it.d.id] = 1; }
       f.style.opacity = (0.82 + 0.18 * dp).toFixed(2);
       f.style.left = (it.x - S / 2) + "px"; f.style.top = (it.y - f._H) + "px";
+      (function (doc, nth, node) { node.addEventListener("click", function () { node.classList.add("picked"); setTimeout(function () { node.classList.remove("picked"); }, 900); openFlower(doc, nth); }); })(it.d, it.i + 1, f);
       layer.appendChild(f);
     });
   }
@@ -441,9 +474,52 @@ input::placeholder { color: var(--ink-faint); }
   }
 
   // ---------- 彈出面板 ----------
+  var cardQueue = [];
+  function queueCard(fn) { if (document.getElementById("sheet-root").firstChild) cardQueue.push(fn); else fn(); }
   function closeSheet() {
     document.getElementById("sheet-root").textContent = "";
     if (sheetOnClose) { var f = sheetOnClose; sheetOnClose = null; f(); }
+    if (cardQueue.length) { var nx = cardQueue.shift(); setTimeout(nx, 350); }
+  }
+  function openFlower(d, nth) {
+    var kids = [el("h2", { text: "第 " + nth + " 朵・" + shortDate(d.date) + " " + mealName(d.meal) })];
+    if (d.note) kids.push(el("div", { class: "msgcard" }, [el("small", { text: HER }), el("p", { text: d.note })]));
+    if (d.reply) kids.push(el("div", { class: "msgcard" }, [el("small", { text: HIM }), el("p", { text: d.reply })]));
+    if (!d.note && !d.reply) kids.push(el("p", { class: "legend", text: "這朵花沒有留言，但它記得那天有好好吃飯。" }));
+    kids.push(el("div", { class: "row" }, [el("button", { class: "btn", text: "關閉", onclick: closeSheet })]));
+    openPanel(kids);
+  }
+  function showMilestone(ms) {
+    openPanel([
+      el("h2", { text: "第 " + ms + " 朵小紅花" }),
+      el("p", { class: "legend", style: "font-size:15px;color:var(--ink-soft)", text: isHer ? "玻璃球裡已經有 " + ms + " 朵花了，謝謝你好好吃飯。" : HER + "累積 " + ms + " 朵了，記得給她一個獎勵。" }),
+      el("div", { class: "row" }, [el("button", { class: "btn primary", text: "好", onclick: closeSheet })])
+    ]);
+  }
+  function glowOrb() {
+    var g = orbGeom(), n = el("div", { class: "orb-glow" });
+    n.style.left = (g.cx - g.rx) + "px"; n.style.top = (g.cy - g.ry) + "px"; n.style.width = (g.rx * 2) + "px"; n.style.height = (g.ry * 2) + "px";
+    document.getElementById("stage").appendChild(n);
+    setTimeout(function () { if (n.parentNode) n.parentNode.removeChild(n); }, 3000);
+  }
+  function currentMeal() {
+    var d = new Date(), h = d.getHours() + d.getMinutes() / 60;
+    if (h >= 5 && h < 10.5) return "breakfast";
+    if (h >= 10.5 && h < 15) return "lunch";
+    if (h >= 15 && h < 22) return "dinner";
+    return null;
+  }
+  function animateNum(node, from, to, delay) {
+    var t0 = null, dur = 900;
+    node.textContent = String(from);
+    function step(ts) {
+      if (!document.body.contains(node)) return;
+      if (t0 === null) t0 = ts;
+      var k = Math.min(1, (ts - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      node.textContent = String(Math.round(from + (to - from) * e));
+      if (k < 1) requestAnimationFrame(step); else { node.classList.remove("pop"); void node.offsetWidth; node.classList.add("pop"); }
+    }
+    setTimeout(function () { requestAnimationFrame(step); }, delay || 0);
   }
   function openPanel(kids) {
     sheetOnClose = null;
@@ -543,15 +619,36 @@ input::placeholder { color: var(--ink-faint); }
     var info = derive(), count = info.confirmed.length;
     var todayKey = dateKey(new Date());
     var pend = pendingDocs();
+    var maxTs = info.confirmed.length ? info.confirmed[info.confirmed.length - 1].ts : 0;
+    var fresh = {}, freshList = [];
+    if (loaded) {
+      loadSeen(maxTs);
+      info.confirmed.forEach(function (d) { if (d.ts > seenTs && !animated[d.id]) { fresh[d.id] = 1; freshList.push(d); } });
+    }
+    var nowMeal = currentMeal(), nowDoc = nowMeal ? slotDoc(todayKey, nowMeal) : null;
+    var greet = HER + "的小紅花";
+    if (isHer) {
+      var doneNow = nowDoc && (nowDoc.status === "confirmed" || nowDoc.status === "pending");
+      greet = nowMeal === "breakfast" ? (doneNow ? "早餐吃了，好棒" : "早安，記得吃早餐")
+        : nowMeal === "lunch" ? (doneNow ? "午餐吃了，好棒" : "午餐時間到了")
+        : nowMeal === "dinner" ? (doneNow ? "晚餐吃了，好棒" : "晚餐要好好吃")
+        : "今天辛苦了，早點休息";
+    }
 
     ui.appendChild(el("div", { class: "top" }, [
       el("div", { class: "brand" }, ["Little Red Flower", el("small", { text: isHer ? HER : HIM })]),
       el("span", { class: "conn", text: connText })
     ]));
 
+    var numEl = el("span", { class: "num", text: String(count) });
+    if (loaded) {
+      var from = shownCount === null ? (isHer ? count - freshList.length : count) : shownCount;
+      if (from !== count) animateNum(numEl, from, count, shownCount === null ? 700 : 150);
+      shownCount = count;
+    }
     ui.appendChild(el("div", { class: "hero" }, [
-      el("p", { class: "eyebrow", text: isHer ? "TODAY IS FOR EATING WELL" : HER + "的小紅花" }),
-      el("div", { class: "count" }, [el("span", { class: "num", text: String(count) }), el("span", { class: "unit", text: "朵小紅花" })]),
+      el("p", { class: "eyebrow", text: greet }),
+      el("div", { class: "count" }, [numEl, el("span", { class: "unit", text: "朵小紅花" })]),
       el("div", { class: "chips" }, [
         el("span", {}, ["連續 ", el("b", { text: String(info.streak) }), " 天"]),
         el("span", {}, ["本週 ", el("b", { text: String(info.week) }), " 朵"])
@@ -565,6 +662,7 @@ input::placeholder { color: var(--ink-faint); }
       if (d && d.status === "confirmed") { cls = "mbtn done"; state = "已領"; disabled = true; }
       else if (d && d.status === "pending") { cls = "mbtn pending"; state = isHer ? "等" + HIM + "確認" : "待確認"; disabled = true; }
       else if (d && d.status === "rejected") { state = "再領一次"; }
+      if (!disabled && m.key === nowMeal) { cls += " now"; if (isHer) state = "該吃囉"; }
       var b = el("button", {
         class: cls, "aria-label": m.name + "，" + state,
         onclick: function () {
@@ -598,22 +696,40 @@ input::placeholder { color: var(--ink-faint); }
     pages.addEventListener("scroll", function () {
       var n = Math.round(pages.scrollLeft / Math.max(1, pages.clientWidth));
       if (n !== dockPage) { dockPage = n; dotEls.forEach(function (d, k) { d.classList.toggle("on", k === n); }); }
+      if (n === 1) { hintUntil = 0; var hn = document.querySelector(".swipe-hint"); if (hn) hn.parentNode.removeChild(hn); }
     }, { passive: true });
     var dock = el("div", { class: "dock liquid-glass" }, [pages, dots]);
     ui.appendChild(dock);
     pages.scrollLeft = dockPage * pages.clientWidth;
 
-    var maxTs = info.confirmed.length ? info.confirmed[info.confirmed.length - 1].ts : 0;
-    var fresh = {}, freshList = [];
-    if (loaded) {
-      loadSeen(maxTs);
-      info.confirmed.forEach(function (d) { if (d.ts > seenTs && !animated[d.id]) { fresh[d.id] = 1; freshList.push(d); } });
+    // 第一次使用：提示可以左右滑，並讓工具列自己「探頭」一下
+    if (loaded && !hintChecked) {
+      hintChecked = true;
+      var seenHint = null; try { seenHint = localStorage.getItem("garden-hint-swipe"); } catch (e) {}
+      if (!seenHint) {
+        try { localStorage.setItem("garden-hint-swipe", "1"); } catch (e) {}
+        hintUntil = Date.now() + 7000;
+        setTimeout(function () { var pg = document.querySelector(".dock .pages"); if (pg && dockPage === 0) { pg.classList.add("peek"); setTimeout(function () { pg.classList.remove("peek"); }, 1500); } }, 1200);
+        setTimeout(function () { var hn = document.querySelector(".swipe-hint"); if (hn) hn.parentNode.removeChild(hn); }, 7000);
+      }
     }
+    if (Date.now() < hintUntil && dockPage === 0) ui.appendChild(el("div", { class: "swipe-hint", text: "← 左右滑動，看更多功能 →" }));
+
     renderOrb(info.confirmed, fresh);
     prevCount = count;
     if (!loaded) { /* 資料還沒到 */ } else if (isHer) {
-      if (freshList.length && !cardShown) { cardShown = true; setTimeout(function () { showNewCard(info.confirmed.filter(function (d) { return d.ts > seenTs; }), maxTs); }, 1600); }
+      if (freshList.length && !cardShown) { cardShown = true; setTimeout(function () { queueCard(function () { showNewCard(info.confirmed.filter(function (d) { return d.ts > seenTs; }), maxTs); }); }, 1600); }
     } else if (maxTs > seenTs) { saveSeen(maxTs); }
+    // 里程碑：每滿 10 朵慶祝一次（第一次打開時只記錄，不補慶祝舊的）
+    if (loaded) {
+      var msKey = "garden-ms-" + (isHer ? "her" : "him"), ms = Math.floor(count / 10) * 10, stored = null;
+      try { stored = localStorage.getItem(msKey); } catch (e) {}
+      if (stored === null) { try { localStorage.setItem(msKey, String(ms)); } catch (e) {} }
+      else if (ms >= 10 && ms > +stored) {
+        try { localStorage.setItem(msKey, String(ms)); } catch (e) {}
+        setTimeout(function () { glowOrb(); queueCard(function () { showMilestone(ms); }); }, 2200);
+      }
+    }
   }
 
   // ---------- 啟動 ----------
@@ -641,11 +757,17 @@ input::placeholder { color: var(--ink-faint); }
   }
   // 手機常擋自動播放（省電模式、LINE/IG 內建瀏覽器），影片沒播時改用 CSS 玻璃球
   (function () {
-    var v = document.getElementById("bg"), stage = document.getElementById("stage");
+    var v = document.getElementById("bg"), still = document.getElementById("still"), stage = document.getElementById("stage");
     layoutVideo();
     v.muted = true; v.defaultMuted = true;
-    function setNoVideo(on) { stage.classList.toggle("novideo", on); }
-    v.addEventListener("playing", function () { setNoVideo(false); });
+    v.poster = ASSET.start;
+    still.addEventListener("error", function () { stage.classList.add("novideo"); });
+    still.src = ASSET.end;
+    v.src = ASSET.video;
+    function showStill() { stage.classList.add("still-on"); }
+    function setNoVideo(on) { if (on) showStill(); }
+    v.addEventListener("ended", showStill);
+    v.addEventListener("playing", function () { stage.classList.remove("still-on"); });
     v.addEventListener("error", function () { setNoVideo(true); });
     var p = v.play(); if (p && p.catch) p.catch(function () { setNoVideo(true); });
     setTimeout(function () { if (!v.ended && (v.paused || v.readyState < 2)) setNoVideo(true); }, 2500);
