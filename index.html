@@ -25,20 +25,27 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; overflow: hidden; }
+html, body { height: 100%; overflow: hidden; -webkit-text-size-adjust: 100%; overscroll-behavior: none; }
 body { background: #010101; color: var(--ink); font-family: var(--font-body); font-weight: 300; -webkit-font-smoothing: antialiased; }
 button { font: inherit; color: inherit; cursor: pointer; background: none; border: 0; }
 button:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
 
-#stage { position: relative; width: 100%; height: 100%; overflow: hidden; }
-#bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
-#orb-layer { position: absolute; inset: 0; pointer-events: none; }
+#stage { position: fixed; top: 0; right: 0; bottom: 0; left: 0; overflow: hidden; background: #010101; }
+#bg { position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+#orb-layer { position: absolute; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; }
 .flower { position: absolute; display: block; transform-origin: 50% 100%; overflow: visible; }
 .flower.new { animation: bloom 1s cubic-bezier(.2, 1.4, .4, 1) both; }
 @keyframes bloom { from { transform: scale(0) rotate(-20deg); opacity: 0; } to { transform: scale(1) rotate(0); opacity: 1; } }
+#orb-fb { display: none; position: absolute; border-radius: 50%;
+  background: radial-gradient(circle at 32% 20%, rgba(255,255,255,.22), rgba(255,255,255,0) 32%),
+    radial-gradient(ellipse at 50% 108%, rgba(52,86,48,.95) 0, rgba(26,44,26,.85) 34%, rgba(0,0,0,0) 62%),
+    radial-gradient(circle at 50% 50%, rgba(8,12,9,.7), rgba(4,6,5,.92));
+  box-shadow: inset 0 0 36px rgba(255,255,255,.14), inset 0 -14px 30px rgba(0,0,0,.5), 0 0 0 1.5px rgba(255,255,255,.28), 0 14px 40px rgba(0,0,0,.6); }
+.novideo #orb-fb { display: block; }
+#err { position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 40; background: rgba(120, 10, 20, .92); color: #fff; font-size: 12px; line-height: 1.4; padding: 8px 10px; border-radius: 8px; word-break: break-all; }
 .orb-hint { position: absolute; transform: translate(-50%, -50%); text-align: center; font-size: 13px; letter-spacing: .14em; color: var(--ink-soft); width: 160px; }
 
-#ui { position: relative; z-index: 5; height: 100%; display: flex; flex-direction: column; align-items: center;
+#ui { position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 5; display: flex; flex-direction: column; align-items: center;
   padding-top: max(18px, env(safe-area-inset-top, 0px));
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
@@ -73,7 +80,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outli
 
 /* 玻璃質感 */
 .liquid-glass { background: rgba(255, 255, 255, 0.01); background-blend-mode: luminosity; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border: none; box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1); position: relative; overflow: hidden; }
-.liquid-glass::before { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.4px;
+.liquid-glass::before { content: ''; position: absolute; top: 0; right: 0; bottom: 0; left: 0; border-radius: inherit; padding: 1.4px;
   background: linear-gradient(180deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.15) 20%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.15) 80%, rgba(255,255,255,0.45) 100%);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
 .liquid-glass:hover { background: rgba(255, 255, 255, 0.04); box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.15); }
@@ -81,7 +88,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outli
 .mini { width: 22px; height: 22px; }
 
 /* 彈出面板 */
-.sheet-wrap { position: fixed; inset: 0; background: rgba(0, 0, 0, .55); display: flex; align-items: flex-end; justify-content: center; z-index: 20; padding: 0 max(12px, env(safe-area-inset-left, 0px)); }
+.sheet-wrap { position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: rgba(0, 0, 0, .55); display: flex; align-items: flex-end; justify-content: center; z-index: 20; padding: 0 max(12px, env(safe-area-inset-left, 0px)); }
 .sheet { width: 100%; max-width: 560px; max-height: 82svh; overflow-y: auto; background: var(--panel); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,.08); border-bottom: 0; box-shadow: 0 8px 32px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.1); border-radius: 22px 22px 0 0; padding: 20px 18px calc(20px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; }
 .sheet h2 { font-family: var(--font-display); font-size: 22px; font-weight: 400; letter-spacing: .06em; }
 .sheet h3 { font-size: 13px; letter-spacing: .16em; color: var(--ink-faint); font-weight: 400; }
@@ -131,7 +138,7 @@ input::placeholder { color: var(--ink-faint); }
   <radialGradient id="baseShadow"><stop offset="0" stop-color="#000" stop-opacity=".6"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
 </defs></svg>
 <div id="stage">
-  <video id="bg" src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260619_191346_9d19d66e-86a4-47f7-8dc6-712c1788c3b2.mp4" autoplay muted loop playsinline></video>
+  <video id="bg" src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260619_191346_9d19d66e-86a4-47f7-8dc6-712c1788c3b2.mp4" autoplay muted loop playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
   <div id="orb-layer"></div>
   <div id="ui"></div>
 </div>
@@ -240,6 +247,9 @@ input::placeholder { color: var(--ink-faint); }
     var layer = document.getElementById("orb-layer");
     layer.textContent = "";
     var g = orbGeom(), n = confirmed.length;
+    var fb = el("div", { id: "orb-fb" });
+    fb.style.left = (g.cx - g.rx) + "px"; fb.style.top = (g.cy - g.ry) + "px"; fb.style.width = (g.rx * 2) + "px"; fb.style.height = (g.ry * 2) + "px";
+    layer.appendChild(fb);
     var bx = g.cx, by = g.cy + 0.44 * g.ry, hw = 0.82 * g.rx, hh = 0.34 * g.ry;
     if (!n) {
       layer.appendChild(el("div", { class: "orb-hint", style: "left:" + g.cx + "px;top:" + (g.cy + 0.2 * g.ry) + "px", text: "第一朵花，等你吃完飯種下" }));
@@ -257,7 +267,7 @@ input::placeholder { color: var(--ink-faint); }
       var isNew = prevCount !== null && n > prevCount && it.i >= prevCount;
       var f = flowerSVG(it.i, "flower" + (isNew ? " new" : ""));
       var dp = Math.max(0, Math.min(1, (it.y - (by - hh)) / (2 * hh)));
-      f.style.filter = "blur(" + ((1 - dp) * 0.7).toFixed(2) + "px) brightness(" + (0.72 + 0.3 * dp).toFixed(2) + ") saturate(.92)";
+      f.style.filter = "blur(" + ((1 - dp) * 0.25).toFixed(2) + "px) brightness(" + (0.72 + 0.3 * dp).toFixed(2) + ") saturate(.92)";
       f.style.height = hF + "px"; f.style.width = (hF * 0.75) + "px";
       f.style.left = (it.x - hF * 0.375) + "px"; f.style.top = (it.y - hF) + "px";
       layer.appendChild(f);
@@ -482,6 +492,22 @@ input::placeholder { color: var(--ink-faint); }
     setInterval(function () { if (!busy && document.visibilityState === "visible" && !document.getElementById("sheet-root").firstChild) refresh(); }, 8000);
     document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") refresh(); });
   }
+  // 手機常擋自動播放（省電模式、LINE/IG 內建瀏覽器），影片沒播時改用 CSS 玻璃球
+  (function () {
+    var v = document.getElementById("bg"), stage = document.getElementById("stage");
+    v.muted = true; v.defaultMuted = true;
+    function setNoVideo(on) { stage.classList.toggle("novideo", on); }
+    v.addEventListener("playing", function () { setNoVideo(false); });
+    v.addEventListener("error", function () { setNoVideo(true); });
+    var p = v.play(); if (p && p.catch) p.catch(function () { setNoVideo(true); });
+    setTimeout(function () { if (v.paused || v.readyState < 2) setNoVideo(true); }, 2500);
+    document.addEventListener("touchstart", function () { if (v.paused) { var q = v.play(); if (q && q.catch) q.catch(function () {}); } }, { once: true, passive: true });
+  })();
+  window.addEventListener("error", function (e) {
+    var d = document.getElementById("err");
+    if (!d) { d = document.createElement("div"); d.id = "err"; document.body.appendChild(d); }
+    d.textContent = "出錯了：" + (e.message || "未知") + (e.lineno ? " (行 " + e.lineno + ")" : "");
+  });
   window.addEventListener("resize", function () { if (started) renderOrb(derive().confirmed); });
   if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) { render(); return; }
   var saved = null;
