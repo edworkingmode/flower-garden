@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>小紅花花園</title>
-<meta name="app-version" content="10">
+<meta name="app-version" content="11">
 <meta name="theme-color" content="#010101">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -61,6 +61,16 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outli
 @keyframes peek { 0%, 100% { transform: none; } 40%, 60% { transform: translateX(-56px); } }
 .swipe-hint { position: absolute; left: 0; right: 0; bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + 86px); text-align: center; font-size: 12px; letter-spacing: .14em; color: var(--ink-soft); pointer-events: none; animation: hintfade 7s ease forwards; z-index: 6; }
 @keyframes hintfade { 0% { opacity: 0; } 10% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+.gtabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); margin-bottom: 12px; }
+.gtab { position: relative; font-size: 13px; letter-spacing: .12em; padding: 6px 16px; border-radius: 999px; color: var(--ink-faint); min-height: 32px; }
+.gtab.on { background: rgba(239, 75, 95, .22); color: var(--ink); }
+.gtab.blue.on { background: rgba(90, 140, 240, .26); }
+.gdot { position: absolute; top: 4px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: #6c9cff; }
+.pf.blue .head { background-image: url(flowers-blue.png); }
+.orb-glow.blue { box-shadow: 0 0 70px 24px rgba(90, 140, 255, .45), inset 0 0 70px rgba(150, 185, 255, .35); }
+.dock .mbtn.wide { flex: 1 1 100%; }
+#orb-layer { transition: opacity .35s ease; }
+#orb-layer.swap { opacity: 0; transition: none; }
 .conn { font-size: 12px; color: var(--amber); letter-spacing: .08em; }
 .msgcard { border-radius: 16px; padding: 14px; background: rgba(255,255,255,.06); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
 .msgcard small { color: var(--ink-faint); font-size: 12px; letter-spacing: .1em; }
@@ -224,27 +234,23 @@ input::placeholder { color: var(--ink-faint); }
   var HER = "安安老大", HIM = "丞丞";
   // 獎勵兌換先關閉。之後打開時：花的餘額 = 已確認的花 - 已兌換的花，兌換紀錄放在 rewards 資料表。
   var REWARDS_ENABLED = false;
-  // 影片尺寸與玻璃球在影片中的位置（以影片寬高為基準的比例）
+  // 兩個花園：安安老大的小紅花（三餐、特殊事件）、丞丞的小藍花（安安老大隨時送）
+  var GARDENS = {
+    her: { name: HER, unit: "朵小紅花", atlas: "", empty: "第一朵花，等你吃完飯種下" },
+    him: { name: HIM, unit: "朵小藍花", atlas: " blue", empty: "等" + HER + "送來第一朵" }
+  };
+  // 影片尺寸與玻璃球在影片中的位置（以影片寬高為基準的比例）；手機用直式高清裁切版
   var ASSETS = {
     full: { video: "bg.mp4", start: "bg-start.jpg", end: "bg-end.jpg", w: 1920, h: 1086, orb: { cx: 0.506, cy: 0.718, rx: 0.1413, ry: 0.2356 } },
     mobile: { video: "bg-m.mp4", start: "bg-m-start.jpg", end: "bg-m-end.jpg", w: 1440, h: 1464, orb: { cx: 0.5, cy: 0.5833, rx: 0.3757, ry: 0.3484 } }
   };
   var ASSET = (window.innerWidth <= 700 && window.innerHeight > window.innerWidth) ? ASSETS.mobile : ASSETS.full;
-  var VID = { w: ASSET.w, h: ASSET.h };
-  var ORB = ASSET.orb;
+  var VID = { w: ASSET.w, h: ASSET.h }, ORB = ASSET.orb;
 
   var cfg = window.GARDEN_CONFIG || {};
-  var isHer = true, docs = [], loaded = false, prevCount = null, busy = false, started = false;
-  var dockPage = 0, shownCount = null, hintUntil = 0, hintChecked = false, seenTs = null, animated = {}, cardShown = false, sheetOnClose = null, connText = "";
-  function seenKey() { return "garden-seen-" + (isHer ? "her" : "him"); }
-  function saveSeen(t) { seenTs = t; try { localStorage.setItem(seenKey(), String(t)); } catch (e) {} }
-  function loadSeen(maxTs) {
-    if (seenTs !== null) return;
-    var v = null; try { v = localStorage.getItem(seenKey()); } catch (e) {}
-    if (v === null) saveSeen(maxTs); else seenTs = +v;
-  }
-  function setConn(t) { connText = t; var n = document.querySelector(".conn"); if (n) n.textContent = t; }
-  function haptic() { try { if (navigator.vibrate) navigator.vibrate(15); } catch (e) {} }
+  var isHer = true, docs = [], loaded = false, busy = false, started = false;
+  var garden = "her", dockPage = 0, hintUntil = 0, hintChecked = false, sheetOnClose = null, connText = "", cardQueue = [];
+  var seen = {}, shown = {}, animated = {}, cardShown = {}, msChecked = {};
 
   // ---------- 小工具 ----------
   function el(tag, attrs, kids) {
@@ -268,7 +274,10 @@ input::placeholder { color: var(--ink-faint); }
   function pad(n) { return n < 10 ? "0" + n : "" + n; }
   function dateKey(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
   function shortDate(k) { var p = k.split("-"); return +p[1] + "/" + +p[2]; }
-  function mealName(k) { for (var i = 0; i < MEALS.length; i++) if (MEALS[i].key === k) return MEALS[i].name; return k === "special" ? "特殊事件" : "特別加花"; }
+  function mealName(k) {
+    for (var i = 0; i < MEALS.length; i++) if (MEALS[i].key === k) return MEALS[i].name;
+    return k === "special" ? "特殊事件" : k === "gift" ? HER + "送的" : "特別加花";
+  }
   function toast(t) {
     var r = document.getElementById("toast-root");
     r.textContent = "";
@@ -276,59 +285,34 @@ input::placeholder { color: var(--ink-faint); }
     r.appendChild(n);
     setTimeout(function () { if (n.parentNode) n.parentNode.removeChild(n); }, 2600);
   }
-
-  // ---------- 花 ----------
-  function seeded(i) { var x = Math.sin(i * 9301 + 49297) * 233280; return x - Math.floor(x); }
-  // 寫實風：有光影的花瓣、暗色花心、細莖與葉，漸層放在頁面共用的 <defs>
-  function flowerSVG(i, cls) {
-    var r = function (k) { return seeded(i * 7 + k); };
-    var s = svg("svg", { viewBox: "0 0 48 64", class: cls || "flower", "aria-hidden": "true" });
-    var lean = (r(1) - 0.5) * 14, hx = 24 + lean * 0.35;
-    var g = svg("g", { transform: "translate(24 63) rotate(" + (lean * 0.5).toFixed(1) + ") translate(-24 -63)" });
-    // 根部陰影
-    g.appendChild(svg("ellipse", { cx: "24", cy: "62.5", rx: "7", ry: "1.6", fill: "url(#baseShadow)" }));
-    // 莖
-    g.appendChild(svg("path", { d: "M24 63 C23.4 52 " + (hx - 0.6).toFixed(1) + " 40 " + hx.toFixed(1) + " 27", stroke: "url(#stemG)", "stroke-width": "1.7", fill: "none", "stroke-linecap": "round" }));
-    // 葉
-    var side = r(2) > 0.5 ? 1 : -1, ly = 44 + r(3) * 6;
-    g.appendChild(svg("path", { d: "M24 " + ly + " C" + (24 + side * 8) + " " + (ly - 2) + " " + (24 + side * 11) + " " + (ly - 9) + " " + (24 + side * 10) + " " + (ly - 12) + " C" + (24 + side * 5) + " " + (ly - 9) + " " + (24 + side * 1.5) + " " + (ly - 5) + " 24 " + ly + " Z", fill: "url(#leafG)" }));
-    g.appendChild(svg("path", { d: "M24 " + ly + " C" + (24 + side * 5) + " " + (ly - 3) + " " + (24 + side * 8) + " " + (ly - 7) + " " + (24 + side * 10) + " " + (ly - 11), stroke: "rgba(10,30,15,.45)", "stroke-width": ".35", fill: "none" }));
-    // 花頭：斜著看，所以上下壓扁
-    var head = svg("g", { transform: "translate(" + hx.toFixed(1) + " 24) rotate(" + ((r(4) - 0.5) * 24).toFixed(1) + ") scale(1 .68)" });
-    head.appendChild(svg("ellipse", { cx: "0", cy: "0", rx: "23", ry: "23", fill: "url(#glowG)" }));
-    var n = 5 + Math.floor(r(5) * 2), off = r(6) * 60, petals = [];
-    for (var p = 0; p < n; p++) {
-      var a = off + p * (360 / n) + (r(10 + p) - 0.5) * 12;
-      petals.push({ a: a, len: 0.9 + r(20 + p) * 0.22 });
-    }
-    petals.sort(function (x, y) { return Math.cos(y.a * Math.PI / 180) - Math.cos(x.a * Math.PI / 180); });
-    petals.forEach(function (pt) {
-      var pg = svg("g", { transform: "rotate(" + pt.a.toFixed(1) + ") scale(" + (0.92).toFixed(2) + " " + pt.len.toFixed(2) + ")" });
-      pg.appendChild(svg("path", { d: "M0 0 C-7.5 -2.5 -10.5 -13 -5.5 -19.5 C-2.5 -23 2.5 -23 5.5 -19.5 C10.5 -13 7.5 -2.5 0 0 Z", fill: "url(#petalG)", stroke: "rgba(255,170,178,.35)", "stroke-width": ".45" }));
-      pg.appendChild(svg("path", { d: "M0 -1 C-1 -8 -1 -14 0 -20 M-2.5 -3 C-4 -9 -4 -13 -3.5 -17 M2.5 -3 C4 -9 4 -13 3.5 -17", stroke: "rgba(60,0,12,.32)", "stroke-width": ".4", fill: "none" }));
-      pg.appendChild(svg("ellipse", { cx: "-2", cy: "-15", rx: "2.2", ry: "5", fill: "url(#petalHi)", transform: "rotate(-12 -2 -15)" }));
-      head.appendChild(pg);
-    });
-    head.appendChild(svg("circle", { cx: "0", cy: "0", r: "4.3", fill: "url(#centerG)" }));
-    for (var d = 0; d < 9; d++) {
-      var ang = d * 40 + r(40) * 30;
-      head.appendChild(svg("circle", { cx: (Math.cos(ang * Math.PI / 180) * 3.4).toFixed(2), cy: (Math.sin(ang * Math.PI / 180) * 3.4).toFixed(2), r: ".55", fill: "#d8b25c", opacity: ".85" }));
-    }
-    g.appendChild(head);
-    s.appendChild(g);
-    return s;
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, String(v)); } catch (e) {} }
+  function roleKey() { return isHer ? "her" : "him"; }
+  function isReceiver(g) { return (g === "her") === isHer; }
+  // 「看過的新花」與里程碑，每個人、每個花園分開記（沿用舊的 key，升級後不會重跳）
+  function seenKey(g) { return "garden-seen-" + roleKey() + (g === "him" ? "-him" : ""); }
+  function msKey(g) { return "garden-ms-" + roleKey() + (g === "him" ? "-blue" : ""); }
+  function getSeen(g, maxTs) {
+    if (seen[g] == null) { var v = lsGet(seenKey(g)); if (v === null) { seen[g] = maxTs; lsSet(seenKey(g), maxTs); } else seen[g] = +v; }
+    return seen[g];
   }
+  function setSeen(g, t) { seen[g] = t; lsSet(seenKey(g), t); }
+  function setConn(t) { connText = t; var n = document.querySelector(".conn"); if (n) n.textContent = t; }
+  function haptic() { try { if (navigator.vibrate) navigator.vibrate(15); } catch (e) {} }
+  function seeded(i) { var x = Math.sin(i * 9301 + 49297) * 233280; return x - Math.floor(x); }
+  function sheetOpen() { return !!document.getElementById("sheet-root").firstChild; }
 
-  // 照片花：圖集 flowers.png 是 3x3，每格一朵（取自影片裡的小花並改成紅色）
-  function photoFlower(i, isNew, S) {
+  // ---------- 照片花：圖集 3x3（取自影片裡的小花；紅花改色，藍花保留原色） ----------
+  function photoFlower(i, isNew, S, atlas) {
     var idx = Math.floor(seeded(i * 3 + 1) * 9), col = idx % 3, row = Math.floor(idx / 3);
     var flip = seeded(i * 5 + 2) > 0.5 ? -1 : 1, tilt = (seeded(i * 7 + 3) - 0.5) * 30, lean = (seeded(i * 11 + 4) - 0.5) * 12;
     var stemH = S * (0.45 + seeded(i * 13 + 5) * 0.3), H = S * 0.55 + stemH;
-    var f = el("div", { class: "pf" + (isNew ? " new" : ""), "aria-hidden": "true" });
+    var f = el("div", { class: "pf" + atlas + (isNew ? " new" : ""), "aria-hidden": "true" });
     f.style.width = S + "px"; f.style.height = H + "px";
+    var sw = Math.max(1.2, S * 0.035);
     var stem = el("div", { class: "stem" });
-    stem.style.top = (S * 0.5) + "px"; stem.style.height = (H - S * 0.5) + "px"; stem.style.width = Math.max(1.2, S * 0.035) + "px";
-    stem.style.marginLeft = (-Math.max(1.2, S * 0.035) / 2) + "px"; stem.style.transform = "rotate(" + lean.toFixed(1) + "deg)";
+    stem.style.top = (S * 0.5) + "px"; stem.style.height = (H - S * 0.5) + "px"; stem.style.width = sw + "px";
+    stem.style.marginLeft = (-sw / 2) + "px"; stem.style.transform = "rotate(" + lean.toFixed(1) + "deg)";
     var head = el("div", { class: "head" });
     head.style.width = S + "px"; head.style.height = S + "px";
     head.style.backgroundPosition = (col * 50) + "% " + (row * 50) + "%";
@@ -338,7 +322,8 @@ input::placeholder { color: var(--ink-faint); }
     return f;
   }
 
-  // 影片縮成約 75%、貼著下方，玻璃球水平置中；玻璃球位置跟著影片算
+  // ---------- 背景與玻璃球位置 ----------
+  // 依「玻璃球目標大小」縮放影片，球水平置中、貼近下方工具列
   var DOCK_GAP = 106;
   function vidLayout() {
     var stage = document.getElementById("stage");
@@ -357,35 +342,28 @@ input::placeholder { color: var(--ink-faint); }
       v.style.width = (VID.w * L.s) + "px"; v.style.height = (VID.h * L.s) + "px";
     });
   }
-  function orbGeom_old() {
-    var stage = document.getElementById("stage");
-    var vw = stage.clientWidth, vh = stage.clientHeight;
-    var s = Math.max(vw / VID.w, vh / VID.h);
-    var ox = (vw - VID.w * s) / 2, oy = (vh - VID.h * s) / 2;
-    return { cx: ox + ORB.cx * VID.w * s, cy: oy + ORB.cy * VID.h * s, rx: ORB.rx * VID.w * s, ry: ORB.ry * VID.h * s };
-  }
   function orbGeom() {
     var L = vidLayout();
     return { cx: L.left + ORB.cx * VID.w * L.s, cy: L.top + ORB.cy * VID.h * L.s, rx: ORB.rx * VID.w * L.s, ry: ORB.ry * VID.h * L.s };
   }
-  function renderOrb(confirmed, fresh) {
+  function renderOrb(confirmed, fresh, g) {
     var layer = document.getElementById("orb-layer");
     layer.textContent = "";
-    var g = orbGeom(), n = confirmed.length;
+    var o = orbGeom(), n = confirmed.length;
     var fb = el("div", { id: "orb-fb" });
-    fb.style.left = (g.cx - g.rx) + "px"; fb.style.top = (g.cy - g.ry) + "px"; fb.style.width = (g.rx * 2) + "px"; fb.style.height = (g.ry * 2) + "px";
+    fb.style.left = (o.cx - o.rx) + "px"; fb.style.top = (o.cy - o.ry) + "px"; fb.style.width = (o.rx * 2) + "px"; fb.style.height = (o.ry * 2) + "px";
     layer.appendChild(fb);
     var dim = el("div", { id: "orb-dim" });
-    dim.style.left = (g.cx - g.rx * 0.97) + "px"; dim.style.top = (g.cy - g.ry * 0.97) + "px"; dim.style.width = (g.rx * 1.94) + "px"; dim.style.height = (g.ry * 1.94) + "px";
+    dim.style.left = (o.cx - o.rx * 0.97) + "px"; dim.style.top = (o.cy - o.ry * 0.97) + "px"; dim.style.width = (o.rx * 1.94) + "px"; dim.style.height = (o.ry * 1.94) + "px";
     layer.appendChild(dim);
-    var bx = g.cx, by = g.cy + 0.44 * g.ry, hw = 0.82 * g.rx, hh = 0.34 * g.ry;
+    var bx = o.cx, by = o.cy + 0.44 * o.ry, hw = 0.82 * o.rx, hh = 0.34 * o.ry;
     if (!n) {
-      layer.appendChild(el("div", { class: "orb-hint", style: "left:" + g.cx + "px;top:" + (g.cy + 0.2 * g.ry) + "px", text: "第一朵花，等你吃完飯種下" }));
+      layer.appendChild(el("div", { class: "orb-hint", style: "left:" + o.cx + "px;top:" + (o.cy + 0.2 * o.ry) + "px", text: GARDENS[g].empty }));
       return;
     }
-    var hF = Math.max(g.ry * 0.34, Math.min(g.ry * 0.6, g.ry * 0.6 * Math.sqrt(10 / Math.max(n, 10))));
-    var S0 = g.ry * 0.4 * Math.max(0.62, Math.min(1, Math.sqrt(14 / Math.max(n, 14))));
-    var M = 40, items = [], bloomIdx = 0;
+    var hF = Math.max(o.ry * 0.34, Math.min(o.ry * 0.6, o.ry * 0.6 * Math.sqrt(10 / Math.max(n, 10))));
+    var S0 = o.ry * 0.4 * Math.max(0.62, Math.min(1, Math.sqrt(14 / Math.max(n, 14))));
+    var M = 40, items = [], bloomIdx = 0, seedOff = g === "him" ? 500 : 0;
     confirmed.forEach(function (d, i) {
       var k = i % M, wrap = Math.floor(i / M);
       var r = Math.sqrt((k + 0.5) / M) * (wrap ? 0.92 : 1), a = i * 2.39996 + wrap * 0.7;
@@ -396,11 +374,13 @@ input::placeholder { color: var(--ink-faint); }
       var isNew = !!(fresh && fresh[it.d.id]);
       var dp = Math.max(0, Math.min(1, (it.y - (by - hh)) / (2 * hh)));
       var S = S0 * (0.86 + 0.28 * dp);
-      var f = photoFlower(it.i, isNew, S);
+      var f = photoFlower(it.i + seedOff, isNew, S, GARDENS[g].atlas);
       if (isNew) { f.style.animationDelay = (bloomIdx++ * 0.25) + "s"; animated[it.d.id] = 1; }
       f.style.opacity = (0.82 + 0.18 * dp).toFixed(2);
       f.style.left = (it.x - S / 2) + "px"; f.style.top = (it.y - f._H) + "px";
-      (function (doc, nth, node) { node.addEventListener("click", function () { node.classList.add("picked"); setTimeout(function () { node.classList.remove("picked"); }, 900); openFlower(doc, nth); }); })(it.d, it.i + 1, f);
+      (function (doc, nth, node) {
+        node.addEventListener("click", function () { node.classList.add("picked"); setTimeout(function () { node.classList.remove("picked"); }, 900); openFlower(doc, nth); });
+      })(it.d, it.i + 1, f);
       layer.appendChild(f);
     });
   }
@@ -415,11 +395,13 @@ input::placeholder { color: var(--ink-faint); }
       .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.status === 204 ? null : r.text().then(function (t) { return t ? JSON.parse(t) : null; }); });
   }
   async function refresh() {
-    try { docs = await api("meals?select=*&order=ts.desc&limit=500"); loaded = true; setConn(""); render(); }
+    try { docs = await api("meals?select=*&order=ts.desc&limit=1000"); loaded = true; setConn(""); render(); }
     catch (e) { setConn(navigator.onLine === false ? "沒有網路" : "連線不穩，稍後重試"); if (!loaded) toast("連不上資料庫，請檢查設定"); }
   }
-  function derive() {
-    var confirmed = docs.filter(function (d) { return d.status === "confirmed"; }).sort(function (a, b) { return (a.ts || 0) - (b.ts || 0); });
+  // 小藍花用 meal = "gift" 存在同一張表，不用改資料庫
+  function gardenDocs(g) { return docs.filter(function (d) { return g === "him" ? d.meal === "gift" : d.meal !== "gift"; }); }
+  function derive(g) {
+    var confirmed = gardenDocs(g).filter(function (d) { return d.status === "confirmed"; }).sort(function (a, b) { return (a.ts || 0) - (b.ts || 0); });
     var byDay = {};
     confirmed.forEach(function (d) { byDay[d.date] = (byDay[d.date] || 0) + 1; });
     var streak = 0, cur = new Date();
@@ -428,7 +410,8 @@ input::placeholder { color: var(--ink-faint); }
     var t = new Date(), mon = new Date(t); mon.setDate(t.getDate() - ((t.getDay() + 6) % 7));
     var from = dateKey(mon), week = 0;
     confirmed.forEach(function (d) { if (d.date >= from) week++; });
-    return { confirmed: confirmed, streak: streak, week: week };
+    var maxTs = confirmed.length ? confirmed[confirmed.length - 1].ts : 0;
+    return { confirmed: confirmed, streak: streak, week: week, maxTs: maxTs };
   }
   function slotDoc(date, meal) {
     for (var i = 0; i < docs.length; i++) if (docs[i].date === date && docs[i].meal === meal) return docs[i];
@@ -445,22 +428,25 @@ input::placeholder { color: var(--ink-faint); }
     busy = false;
     await refresh();
   }
+  function post(data, upsert) {
+    return api(upsert ? "meals?on_conflict=id" : "meals", { method: "POST", prefer: upsert ? "resolution=merge-duplicates,return=minimal" : "return=minimal", body: data });
+  }
   function claim(meal, note) {
     var today = dateKey(new Date());
     var data = { id: today + "_" + meal, date: today, meal: meal, status: isHer ? "pending" : "confirmed", note: note || "", reply: "", ts: Date.now() };
-    return write(function () { return api("meals?on_conflict=id", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: data }); }, isHer ? "已送出，等" + HIM + "確認" : "已幫" + HER + "記上一朵");
+    return write(function () { return post(data, true); }, isHer ? "已送出，等" + HIM + "確認" : "已幫" + HER + "記上一朵");
   }
   function claimSpecial(reason) {
     var today = dateKey(new Date()), ts = Date.now();
-    var data = { id: today + "_special_" + ts, date: today, meal: "special", status: "pending", note: reason, reply: "", ts: ts };
-    return write(function () { return api("meals", { method: "POST", prefer: "return=minimal", body: data }); }, "已送出，等" + HIM + "確認");
+    return write(function () { return post({ id: today + "_special_" + ts, date: today, meal: "special", status: "pending", note: reason, reply: "", ts: ts }); }, "已送出，等" + HIM + "確認");
   }
-  function openSpecial() {
-    if (isHer) {
-      openInput("特殊事件", "原因，例如：生病還是有吃藥", "送出申請", function (v) { if (!v) { toast("請寫一下原因"); return; } claimSpecial(v); });
-    } else {
-      openInput("額外加一朵", "原因，例如：今天特別棒（可留空）", "加一朵", function (v) { addBonus(v); });
-    }
+  function addBonus(reason) {
+    var today = dateKey(new Date()), ts = Date.now();
+    return write(function () { return post({ id: today + "_bonus_" + ts, date: today, meal: "bonus", status: "confirmed", note: reason || "", reply: "", ts: ts }); }, "特別加一朵");
+  }
+  function giveGift(reason) {
+    var today = dateKey(new Date()), ts = Date.now();
+    return write(function () { return post({ id: today + "_gift_" + ts, date: today, meal: "gift", status: "confirmed", note: reason, reply: "", ts: ts }); }, "送出了，" + HIM + "的玻璃球長出一朵小藍花");
   }
   function confirmDoc(d, reply) {
     return write(function () { return api("meals?id=eq." + encodeURIComponent(d.id), { method: "PATCH", prefer: "return=minimal", body: { status: "confirmed", reply: reply || "", ts: Date.now() } }); }, "已確認，玻璃球裡長出一朵");
@@ -468,18 +454,40 @@ input::placeholder { color: var(--ink-faint); }
   function rejectDoc(d, reply) {
     return write(function () { return api("meals?id=eq." + encodeURIComponent(d.id), { method: "PATCH", prefer: "return=minimal", body: { status: "rejected", reply: reply || "" } }); }, "已退回");
   }
-  function addBonus(reason) {
-    var today = dateKey(new Date()), ts = Date.now();
-    return write(function () { return api("meals", { method: "POST", prefer: "return=minimal", body: { id: today + "_bonus_" + ts, date: today, meal: "bonus", status: "confirmed", note: reason || "", reply: "", ts: ts } }); }, "特別加一朵");
-  }
 
   // ---------- 彈出面板 ----------
-  var cardQueue = [];
-  function queueCard(fn) { if (document.getElementById("sheet-root").firstChild) cardQueue.push(fn); else fn(); }
+  function queueCard(fn) { if (sheetOpen()) cardQueue.push(fn); else fn(); }
   function closeSheet() {
     document.getElementById("sheet-root").textContent = "";
     if (sheetOnClose) { var f = sheetOnClose; sheetOnClose = null; f(); }
     if (cardQueue.length) { var nx = cardQueue.shift(); setTimeout(nx, 350); }
+  }
+  function openPanel(kids) {
+    sheetOnClose = null;
+    var root = document.getElementById("sheet-root");
+    root.textContent = "";
+    var wrap = el("div", { class: "sheet-wrap", onclick: function (e) { if (e.target === wrap) closeSheet(); } }, [
+      el("div", { class: "sheet", role: "dialog" }, kids)
+    ]);
+    root.appendChild(wrap);
+  }
+  function openInput(title, placeholder, okLabel, onOk) {
+    var input = el("input", { type: "text", id: "sheet-input", placeholder: placeholder, maxlength: "80", "aria-label": placeholder });
+    openPanel([
+      el("h2", { text: title }), input,
+      el("div", { class: "row" }, [
+        el("button", { class: "btn primary", text: okLabel, onclick: function () { var v = input.value.trim(); closeSheet(); onOk(v); } }),
+        el("button", { class: "btn ghost", text: "取消", onclick: closeSheet })
+      ])
+    ]);
+    input.focus();
+  }
+  function openSpecial() {
+    if (isHer) openInput("特殊事件", "原因，例如：生病還是有吃藥", "送出申請", function (v) { if (!v) { toast("請寫一下原因"); return; } claimSpecial(v); });
+    else openInput("額外加一朵", "原因，例如：今天特別棒（可留空）", "加一朵", function (v) { addBonus(v); });
+  }
+  function openGift() {
+    openInput("送" + HIM + "一朵小藍花", "原因，例如：今天陪我去看醫生", "送出", function (v) { if (!v) { toast("寫一句原因吧"); return; } giveGift(v); });
   }
   function openFlower(d, nth) {
     var kids = [el("h2", { text: "第 " + nth + " 朵・" + shortDate(d.date) + " " + mealName(d.meal) })];
@@ -489,19 +497,115 @@ input::placeholder { color: var(--ink-faint); }
     kids.push(el("div", { class: "row" }, [el("button", { class: "btn", text: "關閉", onclick: closeSheet })]));
     openPanel(kids);
   }
-  function showMilestone(ms) {
+  // 收到新花的卡片：在自己的花園就「收下」，在另一個花園就「去看看」
+  function showNewCard(g, list, maxTs) {
+    var kids;
+    if (g === "him") {
+      kids = [el("h2", { text: HER + "送你 " + list.length + " 朵小藍花" })];
+      list.slice(-3).reverse().forEach(function (d) {
+        kids.push(el("div", { class: "msgcard" }, [el("small", { text: shortDate(d.date) }), el("p", { text: d.note || "想送你一朵" })]));
+      });
+    } else {
+      var withReply = list.filter(function (d) { return d.reply; }).slice(-3).reverse();
+      kids = [el("h2", { text: "有 " + list.length + " 朵新花開了" })];
+      if (!withReply.length) kids.push(el("p", { class: "legend", text: HIM + "確認了你的花。" }));
+      withReply.forEach(function (d) {
+        kids.push(el("div", { class: "msgcard" }, [el("small", { text: shortDate(d.date) + " " + mealName(d.meal) }), el("p", { text: HIM + "：" + d.reply })]));
+      });
+    }
+    var btn = garden === g
+      ? el("button", { class: "btn primary", text: "收下", onclick: closeSheet })
+      : el("button", { class: "btn primary", text: "去看看", onclick: function () { sheetOnClose = null; closeSheet(); switchGarden(g); setTimeout(function () { setSeen(g, maxTs); }, 1500); } });
+    kids.push(el("div", { class: "row" }, [btn]));
+    openPanel(kids);
+    sheetOnClose = function () { setSeen(g, maxTs); };
+  }
+  function showMilestone(g, ms) {
+    var text = g === "him"
+      ? (isHer ? "你已經送" + HIM + " " + ms + " 朵小藍花了。" : HER + "已經送你 " + ms + " 朵小藍花了，記得謝謝她。")
+      : (isHer ? "玻璃球裡已經有 " + ms + " 朵花了，謝謝你好好吃飯。" : HER + "累積 " + ms + " 朵了，記得給她一個獎勵。");
     openPanel([
-      el("h2", { text: "第 " + ms + " 朵小紅花" }),
-      el("p", { class: "legend", style: "font-size:15px;color:var(--ink-soft)", text: isHer ? "玻璃球裡已經有 " + ms + " 朵花了，謝謝你好好吃飯。" : HER + "累積 " + ms + " 朵了，記得給她一個獎勵。" }),
+      el("h2", { text: "第 " + ms + " " + GARDENS[g].unit }),
+      el("p", { class: "legend", style: "font-size:15px;color:var(--ink-soft)", text: text }),
       el("div", { class: "row" }, [el("button", { class: "btn primary", text: "好", onclick: closeSheet })])
     ]);
   }
-  function glowOrb() {
-    var g = orbGeom(), n = el("div", { class: "orb-glow" });
-    n.style.left = (g.cx - g.rx) + "px"; n.style.top = (g.cy - g.ry) + "px"; n.style.width = (g.rx * 2) + "px"; n.style.height = (g.ry * 2) + "px";
+  function glowOrb(g) {
+    var o = orbGeom(), n = el("div", { class: "orb-glow" + (g === "him" ? " blue" : "") });
+    n.style.left = (o.cx - o.rx) + "px"; n.style.top = (o.cy - o.ry) + "px"; n.style.width = (o.rx * 2) + "px"; n.style.height = (o.ry * 2) + "px";
     document.getElementById("stage").appendChild(n);
     setTimeout(function () { if (n.parentNode) n.parentNode.removeChild(n); }, 3000);
   }
+  function openPending() {
+    var pend = pendingDocs();
+    var kids = [el("h2", { text: "等你確認" })];
+    if (!pend.length) kids.push(el("p", { class: "legend", text: "目前沒有等你確認的。" }));
+    pend.forEach(function (d) {
+      kids.push(el("div", { class: "pitem" }, [
+        el("div", { class: "who", text: shortDate(d.date) + " " + mealName(d.meal) + "，" + HER + (d.meal === "special" ? "申請特殊事件" : "說吃完了") }),
+        d.note ? el("p", { class: "quote", text: HER + "說：" + d.note }) : null,
+        el("div", { class: "row" }, [
+          el("button", { class: "btn primary", text: "確認，給她一朵", onclick: function () { openInput("想對" + HER + "說什麼？", "例如：今天好棒（可留空）", "確認", function (v) { confirmDoc(d, v); }); } }),
+          el("button", { class: "btn", text: "退回", onclick: function () { openInput("退回原因", "例如：還沒吃完喔（可留空）", "退回", function (v) { rejectDoc(d, v); }); } })
+        ])
+      ]));
+    });
+    kids.push(el("div", { class: "row" }, [el("button", { class: "btn ghost", text: "關閉", onclick: closeSheet })]));
+    openPanel(kids);
+  }
+  function roleRow() {
+    return el("div", { class: "row" }, [
+      el("button", { class: "btn ghost", text: "換身分", onclick: function () { try { localStorage.removeItem("garden-role"); } catch (e) {} location.reload(); } }),
+      el("button", { class: "btn", text: "關閉", onclick: closeSheet })
+    ]);
+  }
+  function openRecords() {
+    if (garden === "him") {
+      var gifts = gardenDocs("him").slice().sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); }).slice(0, 60);
+      var glog = el("ul", { class: "log" });
+      if (!gifts.length) glog.appendChild(el("li", {}, [el("span", { class: "when" }), el("span", { class: "what", text: "還沒有收到小藍花。" })]));
+      gifts.forEach(function (d) {
+        glog.appendChild(el("li", {}, [el("span", { class: "when", text: shortDate(d.date) }), el("div", { class: "what" }, [el("b", { text: "小藍花" }), d.note ? el("p", { class: "note", text: HER + "：" + d.note }) : null])]));
+      });
+      openPanel([el("h2", { text: HIM + "收到的花" }), glog, roleRow()]);
+      return;
+    }
+    var today = new Date(), todayKey = dateKey(today);
+    var week = el("div", { class: "week" });
+    var mon = new Date(today); mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
+    var names = ["一", "二", "三", "四", "五", "六", "日"];
+    for (var i = 0; i < 7; i++) {
+      var dt = new Date(mon); dt.setDate(mon.getDate() + i);
+      var k = dateKey(dt), future = dt > today && k !== todayKey;
+      var dots = el("div", { class: "dots" });
+      MEALS.forEach(function (m) {
+        var s = slotDoc(k, m.key);
+        dots.appendChild(el("span", { class: "dot" + (s && s.status === "confirmed" ? " on" : s && s.status === "pending" ? " wait" : "") + (future ? " future" : "") }));
+      });
+      week.appendChild(el("div", { class: "day" + (k === todayKey ? " today" : "") }, [el("span", { class: "d", text: names[i] }), dots]));
+    }
+    var log = el("ul", { class: "log" });
+    var list = gardenDocs("her").slice().sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); }).slice(0, 40);
+    if (!list.length) log.appendChild(el("li", {}, [el("span", { class: "when" }), el("span", { class: "what", text: "還沒有紀錄。" })]));
+    list.forEach(function (d) {
+      var tag = d.status === "pending" ? el("span", { class: "tag", text: "等確認" }) : d.status === "rejected" ? el("span", { class: "tag no", text: "已退回" }) : null;
+      log.appendChild(el("li", {}, [
+        el("span", { class: "when", text: shortDate(d.date) }),
+        el("div", { class: "what" }, [
+          el("div", {}, [el("b", { text: mealName(d.meal) }), tag]),
+          d.note ? el("p", { class: "note", text: (isHer ? "我：" : HER + "：") + d.note }) : null,
+          d.reply ? el("p", { class: "reply", text: (isHer ? HIM + "：" : "我：") + d.reply }) : null
+        ])
+      ]));
+    });
+    openPanel([
+      el("h2", { text: "本週與紀錄" }), week,
+      el("p", { class: "legend", text: "每天三顆點，由上到下是早餐、午餐、晚餐。紅色是已領，黃色是等確認。" }),
+      el("h3", { text: "領花紀錄" }), log, roleRow()
+    ]);
+  }
+
+  // ---------- 動畫與時間 ----------
   function currentMeal() {
     var d = new Date(), h = d.getHours() + d.getMinutes() / 60;
     if (h >= 5 && h < 10.5) return "breakfast";
@@ -521,93 +625,13 @@ input::placeholder { color: var(--ink-faint); }
     }
     setTimeout(function () { requestAnimationFrame(step); }, delay || 0);
   }
-  function openPanel(kids) {
-    sheetOnClose = null;
-    var root = document.getElementById("sheet-root");
-    root.textContent = "";
-    var wrap = el("div", { class: "sheet-wrap", onclick: function (e) { if (e.target === wrap) closeSheet(); } }, [
-      el("div", { class: "sheet", role: "dialog" }, kids)
-    ]);
-    root.appendChild(wrap);
-  }
-  function showNewCard(list, maxTs) {
-    if (document.getElementById("sheet-root").firstChild) return;
-    var withReply = list.filter(function (d) { return d.reply; }).slice(-3).reverse();
-    var kids = [el("h2", { text: "有 " + list.length + " 朵新花開了" })];
-    if (!withReply.length) kids.push(el("p", { class: "legend", text: HIM + "確認了你的花。" }));
-    withReply.forEach(function (d) {
-      kids.push(el("div", { class: "msgcard" }, [el("small", { text: shortDate(d.date) + " " + mealName(d.meal) }), el("p", { text: HIM + "：" + d.reply })]));
-    });
-    kids.push(el("div", { class: "row" }, [el("button", { class: "btn primary", text: "收下", onclick: closeSheet })]));
-    openPanel(kids);
-    sheetOnClose = function () { saveSeen(maxTs); };
-  }
-  function openInput(title, placeholder, okLabel, onOk) {
-    var input = el("input", { type: "text", id: "sheet-input", placeholder: placeholder, maxlength: "80", "aria-label": placeholder });
-    openPanel([
-      el("h2", { text: title }), input,
-      el("div", { class: "row" }, [
-        el("button", { class: "btn primary", text: okLabel, onclick: function () { var v = input.value.trim(); closeSheet(); onOk(v); } }),
-        el("button", { class: "btn ghost", text: "取消", onclick: closeSheet })
-      ])
-    ]);
-    input.focus();
-  }
-  function openPending() {
-    var pend = pendingDocs();
-    var kids = [el("h2", { text: "等你確認" })];
-    if (!pend.length) kids.push(el("p", { class: "legend", text: "目前沒有等你確認的。" }));
-    pend.forEach(function (d) {
-      kids.push(el("div", { class: "pitem" }, [
-        el("div", { class: "who", text: shortDate(d.date) + " " + mealName(d.meal) + "，" + HER + "說吃完了" }),
-        d.note ? el("p", { class: "quote", text: HER + "說：" + d.note }) : null,
-        el("div", { class: "row" }, [
-          el("button", { class: "btn primary", text: "確認，給她一朵", onclick: function () { openInput("想對" + HER + "說什麼？", "例如：今天好棒（可留空）", "確認", function (v) { confirmDoc(d, v); }); } }),
-          el("button", { class: "btn", text: "退回", onclick: function () { openInput("退回原因", "例如：還沒吃完喔（可留空）", "退回", function (v) { rejectDoc(d, v); }); } })
-        ])
-      ]));
-    });
-    kids.push(el("div", { class: "row" }, [el("button", { class: "btn ghost", text: "關閉", onclick: closeSheet })]));
-    openPanel(kids);
-  }
-  function openRecords() {
-    var today = new Date(), todayKey = dateKey(today);
-    var week = el("div", { class: "week" });
-    var mon = new Date(today); mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
-    var names = ["一", "二", "三", "四", "五", "六", "日"];
-    for (var i = 0; i < 7; i++) {
-      var dt = new Date(mon); dt.setDate(mon.getDate() + i);
-      var k = dateKey(dt), future = dt > today && k !== todayKey;
-      var dots = el("div", { class: "dots" });
-      MEALS.forEach(function (m) {
-        var s = slotDoc(k, m.key);
-        dots.appendChild(el("span", { class: "dot" + (s && s.status === "confirmed" ? " on" : s && s.status === "pending" ? " wait" : "") + (future ? " future" : "") }));
-      });
-      week.appendChild(el("div", { class: "day" + (k === todayKey ? " today" : "") }, [el("span", { class: "d", text: names[i] }), dots]));
-    }
-    var log = el("ul", { class: "log" });
-    var list = docs.slice().sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); }).slice(0, 40);
-    if (!list.length) log.appendChild(el("li", {}, [el("span", { class: "when" }), el("span", { class: "what", text: "還沒有紀錄。" })]));
-    list.forEach(function (d) {
-      var tag = d.status === "pending" ? el("span", { class: "tag", text: "等確認" }) : d.status === "rejected" ? el("span", { class: "tag no", text: "已退回" }) : null;
-      log.appendChild(el("li", {}, [
-        el("span", { class: "when", text: shortDate(d.date) }),
-        el("div", { class: "what" }, [
-          el("div", {}, [el("b", { text: mealName(d.meal) }), tag]),
-          d.note ? el("p", { class: "note", text: (isHer ? "我：" : HER + "：") + d.note }) : null,
-          d.reply ? el("p", { class: "reply", text: (isHer ? HIM + "：" : "我：") + d.reply }) : null
-        ])
-      ]));
-    });
-    openPanel([
-      el("h2", { text: "本週與紀錄" }), week,
-      el("p", { class: "legend", text: "每天三顆點，由上到下是早餐、午餐、晚餐。紅色是已領，黃色是等確認。" }),
-      el("h3", { text: "領花紀錄" }), log,
-      el("div", { class: "row" }, [
-        el("button", { class: "btn ghost", text: "換身分", onclick: function () { try { localStorage.removeItem("garden-role"); } catch (e) {} location.reload(); } }),
-        el("button", { class: "btn", text: "關閉", onclick: closeSheet })
-      ])
-    ]);
+  function switchGarden(g) {
+    if (g === garden || !started) return;
+    garden = g;
+    var layer = document.getElementById("orb-layer");
+    layer.classList.add("swap");
+    render();
+    setTimeout(function () { layer.classList.remove("swap"); }, 30);
   }
 
   // ---------- 畫面 ----------
@@ -616,18 +640,44 @@ input::placeholder { color: var(--ink-faint); }
     ui.textContent = "";
     if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) { ui.appendChild(el("p", { class: "msg", text: "還沒設定資料庫，請填好 config.js。" })); return; }
     if (!started) return;
-    var info = derive(), count = info.confirmed.length;
-    var todayKey = dateKey(new Date());
-    var pend = pendingDocs();
-    var maxTs = info.confirmed.length ? info.confirmed[info.confirmed.length - 1].ts : 0;
-    var fresh = {}, freshList = [];
-    if (loaded) {
-      loadSeen(maxTs);
-      info.confirmed.forEach(function (d) { if (d.ts > seenTs && !animated[d.id]) { fresh[d.id] = 1; freshList.push(d); } });
-    }
-    var nowMeal = currentMeal(), nowDoc = nowMeal ? slotDoc(todayKey, nowMeal) : null;
-    var greet = HER + "的小紅花";
-    if (isHer) {
+    var G = GARDENS[garden], info = derive(garden), count = info.confirmed.length;
+    var todayKey = dateKey(new Date()), pend = pendingDocs();
+
+    // 兩個花園的新花、未讀提示、卡片、里程碑
+    var fresh = {}, freshCount = 0, unseenOther = false;
+    ["her", "him"].forEach(function (g) {
+      var inf = g === garden ? info : derive(g);
+      if (!loaded) return;
+      var s = getSeen(g, inf.maxTs);
+      var list = inf.confirmed.filter(function (d) { return d.ts > s; });
+      if (g === garden) list.forEach(function (d) { if (!animated[d.id]) { fresh[d.id] = 1; freshCount++; } });
+      if (isReceiver(g)) {
+        if (list.length && g !== garden) unseenOther = true;
+        if (list.length && !cardShown[g]) {
+          cardShown[g] = true;
+          setTimeout(function () { queueCard(function () { showNewCard(g, inf.confirmed.filter(function (d) { return d.ts > seen[g]; }), inf.maxTs); }); }, 1600);
+        }
+      } else if (inf.maxTs > s && (g !== garden || !list.length || list.every(function (d) { return animated[d.id] || fresh[d.id]; }))) {
+        setSeen(g, inf.maxTs);
+      }
+      var ms = Math.floor(inf.confirmed.length / 10) * 10, stored = lsGet(msKey(g));
+      if (stored === null) lsSet(msKey(g), ms);
+      else if (ms >= 10 && ms > +stored) {
+        lsSet(msKey(g), ms);
+        setTimeout(function () { if (g === garden) glowOrb(g); queueCard(function () { showMilestone(g, ms); }); }, 2200);
+      }
+    });
+
+    ui.appendChild(el("div", { class: "top" }, [
+      el("div", { class: "brand" }, ["Little Red Flower", el("small", { text: isHer ? HER : HIM })]),
+      el("span", { class: "conn", text: connText })
+    ]));
+
+    // 問候語：小紅花依時間提醒；小藍花說明是誰送的
+    var nowMeal = currentMeal(), nowDoc = nowMeal ? slotDoc(todayKey, nowMeal) : null, greet;
+    if (garden === "him") greet = isHer ? "想謝謝" + HIM + "的時候，就送他一朵" : HER + "送你的小藍花";
+    else if (!isHer) greet = HER + "的小紅花";
+    else {
       var doneNow = nowDoc && (nowDoc.status === "confirmed" || nowDoc.status === "pending");
       greet = nowMeal === "breakfast" ? (doneNow ? "早餐吃了，好棒" : "早安，記得吃早餐")
         : nowMeal === "lunch" ? (doneNow ? "午餐吃了，好棒" : "午餐時間到了")
@@ -635,43 +685,50 @@ input::placeholder { color: var(--ink-faint); }
         : "今天辛苦了，早點休息";
     }
 
-    ui.appendChild(el("div", { class: "top" }, [
-      el("div", { class: "brand" }, ["Little Red Flower", el("small", { text: isHer ? HER : HIM })]),
-      el("span", { class: "conn", text: connText })
-    ]));
+    var tabs = el("div", { class: "gtabs", role: "tablist" }, ["her", "him"].map(function (g) {
+      var dot = g !== garden && unseenOther && isReceiver(g) ? el("span", { class: "gdot" }) : null;
+      return el("button", { class: "gtab" + (g === garden ? " on" : "") + (g === "him" ? " blue" : ""), role: "tab", "aria-selected": g === garden ? "true" : "false", onclick: function () { switchGarden(g); } }, [GARDENS[g].name, dot]);
+    }));
 
     var numEl = el("span", { class: "num", text: String(count) });
     if (loaded) {
-      var from = shownCount === null ? (isHer ? count - freshList.length : count) : shownCount;
-      if (from !== count) animateNum(numEl, from, count, shownCount === null ? 700 : 150);
-      shownCount = count;
+      var from = shown[garden] == null ? (isReceiver(garden) ? count - freshCount : count) : shown[garden];
+      if (from !== count) animateNum(numEl, from, count, shown[garden] == null ? 700 : 150);
+      shown[garden] = count;
     }
     ui.appendChild(el("div", { class: "hero" }, [
+      tabs,
       el("p", { class: "eyebrow", text: greet }),
-      el("div", { class: "count" }, [numEl, el("span", { class: "unit", text: "朵小紅花" })]),
+      el("div", { class: "count" }, [numEl, el("span", { class: "unit", text: G.unit })]),
       el("div", { class: "chips" }, [
         el("span", {}, ["連續 ", el("b", { text: String(info.streak) }), " 天"]),
         el("span", {}, ["本週 ", el("b", { text: String(info.week) }), " 朵"])
       ])
     ]));
 
-    var mealPage = el("div", { class: "page" });
-    MEALS.forEach(function (m) {
-      var d = slotDoc(todayKey, m.key);
-      var cls = "mbtn", state = isHer ? "我吃完了" : "代記", disabled = false;
-      if (d && d.status === "confirmed") { cls = "mbtn done"; state = "已領"; disabled = true; }
-      else if (d && d.status === "pending") { cls = "mbtn pending"; state = isHer ? "等" + HIM + "確認" : "待確認"; disabled = true; }
-      else if (d && d.status === "rejected") { state = "再領一次"; }
-      if (!disabled && m.key === nowMeal) { cls += " now"; if (isHer) state = "該吃囉"; }
-      var b = el("button", {
-        class: cls, "aria-label": m.name + "，" + state,
-        onclick: function () {
-          openInput(isHer ? "吃完" + m.name + "了嗎？" : "幫" + HER + "記上" + m.name, isHer ? "想跟" + HIM + "說什麼？（可留空）" : "備註（可留空）", isHer ? "送出" : "記上一朵", function (v) { claim(m.key, v); });
-        }
-      }, [el("span", { class: "name", text: m.name }), el("span", { class: "state", text: state })]);
-      if (disabled) b.setAttribute("disabled", "");
-      mealPage.appendChild(b);
-    });
+    // 工具列第一頁：小紅花是三餐；小藍花是「送一朵」
+    var firstPage = el("div", { class: "page" });
+    if (garden === "him") {
+      if (isHer) firstPage.appendChild(el("button", { class: "mbtn wide now", onclick: openGift }, [el("span", { class: "name", text: "送" + HIM + "一朵小藍花" }), el("span", { class: "state", text: "寫一句想謝謝他的事" })]));
+      else firstPage.appendChild(el("button", { class: "mbtn wide", onclick: openRecords }, [el("span", { class: "name", text: "看" + HER + "送的話" }), el("span", { class: "state", text: "共 " + count + " 朵小藍花" })]));
+    } else {
+      MEALS.forEach(function (m) {
+        var d = slotDoc(todayKey, m.key);
+        var cls = "mbtn", state = isHer ? "我吃完了" : "代記", disabled = false;
+        if (d && d.status === "confirmed") { cls = "mbtn done"; state = "已領"; disabled = true; }
+        else if (d && d.status === "pending") { cls = "mbtn pending"; state = isHer ? "等" + HIM + "確認" : "待確認"; disabled = true; }
+        else if (d && d.status === "rejected") { state = "再領一次"; }
+        if (!disabled && m.key === nowMeal) { cls += " now"; if (isHer) state = "該吃囉"; }
+        var b = el("button", {
+          class: cls, "aria-label": m.name + "，" + state,
+          onclick: function () {
+            openInput(isHer ? "吃完" + m.name + "了嗎？" : "幫" + HER + "記上" + m.name, isHer ? "想跟" + HIM + "說什麼？（可留空）" : "備註（可留空）", isHer ? "送出" : "記上一朵", function (v) { claim(m.key, v); });
+          }
+        }, [el("span", { class: "name", text: m.name }), el("span", { class: "state", text: state })]);
+        if (disabled) b.setAttribute("disabled", "");
+        firstPage.appendChild(b);
+      });
+    }
 
     var ico = function (kids) { return svg("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "1.6", "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" }, kids); };
     var toolPage = el("div", { class: "page" });
@@ -687,10 +744,10 @@ input::placeholder { color: var(--ink-faint); }
       ico([svg("path", { d: "M8 6.5h11M8 12h11M8 17.5h11M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01" })]), "紀錄"
     ]));
 
-    var pages = el("div", { class: "pages" }, [mealPage, toolPage]);
+    var pages = el("div", { class: "pages" }, [firstPage, toolPage]);
     var dots = el("div", { class: "dots2" });
     var dotEls = [0, 1].map(function (n) {
-      var d = el("button", { class: "dot2" + (n === dockPage ? " on" : "") + (n === 1 && pend.length && !isHer ? " alert" : ""), "aria-label": n === 0 ? "三餐" : "更多", onclick: function () { pages.scrollTo({ left: n * pages.clientWidth, behavior: "smooth" }); } });
+      var d = el("button", { class: "dot2" + (n === dockPage ? " on" : "") + (n === 1 && pend.length && !isHer ? " alert" : ""), "aria-label": n === 0 ? "主要" : "更多", onclick: function () { pages.scrollTo({ left: n * pages.clientWidth, behavior: "smooth" }); } });
       dots.appendChild(d); return d;
     });
     pages.addEventListener("scroll", function () {
@@ -698,16 +755,14 @@ input::placeholder { color: var(--ink-faint); }
       if (n !== dockPage) { dockPage = n; dotEls.forEach(function (d, k) { d.classList.toggle("on", k === n); }); }
       if (n === 1) { hintUntil = 0; var hn = document.querySelector(".swipe-hint"); if (hn) hn.parentNode.removeChild(hn); }
     }, { passive: true });
-    var dock = el("div", { class: "dock liquid-glass" }, [pages, dots]);
-    ui.appendChild(dock);
+    ui.appendChild(el("div", { class: "dock liquid-glass" }, [pages, dots]));
     pages.scrollLeft = dockPage * pages.clientWidth;
 
-    // 第一次使用：提示可以左右滑，並讓工具列自己「探頭」一下
+    // 第一次使用：提示工具列可以左右滑，並讓工具列「探頭」一下
     if (loaded && !hintChecked) {
       hintChecked = true;
-      var seenHint = null; try { seenHint = localStorage.getItem("garden-hint-swipe"); } catch (e) {}
-      if (!seenHint) {
-        try { localStorage.setItem("garden-hint-swipe", "1"); } catch (e) {}
+      if (!lsGet("garden-hint-swipe")) {
+        lsSet("garden-hint-swipe", "1");
         hintUntil = Date.now() + 7000;
         setTimeout(function () { var pg = document.querySelector(".dock .pages"); if (pg && dockPage === 0) { pg.classList.add("peek"); setTimeout(function () { pg.classList.remove("peek"); }, 1500); } }, 1200);
         setTimeout(function () { var hn = document.querySelector(".swipe-hint"); if (hn) hn.parentNode.removeChild(hn); }, 7000);
@@ -715,22 +770,22 @@ input::placeholder { color: var(--ink-faint); }
     }
     if (Date.now() < hintUntil && dockPage === 0) ui.appendChild(el("div", { class: "swipe-hint", text: "← 左右滑動，看更多功能 →" }));
 
-    renderOrb(info.confirmed, fresh);
-    prevCount = count;
-    if (!loaded) { /* 資料還沒到 */ } else if (isHer) {
-      if (freshList.length && !cardShown) { cardShown = true; setTimeout(function () { queueCard(function () { showNewCard(info.confirmed.filter(function (d) { return d.ts > seenTs; }), maxTs); }); }, 1600); }
-    } else if (maxTs > seenTs) { saveSeen(maxTs); }
-    // 里程碑：每滿 10 朵慶祝一次（第一次打開時只記錄，不補慶祝舊的）
-    if (loaded) {
-      var msKey = "garden-ms-" + (isHer ? "her" : "him"), ms = Math.floor(count / 10) * 10, stored = null;
-      try { stored = localStorage.getItem(msKey); } catch (e) {}
-      if (stored === null) { try { localStorage.setItem(msKey, String(ms)); } catch (e) {} }
-      else if (ms >= 10 && ms > +stored) {
-        try { localStorage.setItem(msKey, String(ms)); } catch (e) {}
-        setTimeout(function () { glowOrb(); queueCard(function () { showMilestone(ms); }); }, 2200);
-      }
-    }
+    renderOrb(info.confirmed, fresh, garden);
   }
+
+  // ---------- 左右滑切換花園（工具列以外的地方） ----------
+  var sw = null;
+  document.addEventListener("touchstart", function (e) {
+    if (!started || sheetOpen() || !e.touches || e.touches.length !== 1) { sw = null; return; }
+    if (e.target.closest && e.target.closest(".dock")) { sw = null; return; }
+    sw = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+  }, { passive: true });
+  document.addEventListener("touchend", function (e) {
+    if (!sw || !e.changedTouches || !e.changedTouches.length) return;
+    var dx = e.changedTouches[0].clientX - sw.x, dy = e.changedTouches[0].clientY - sw.y, dt = Date.now() - sw.t;
+    sw = null;
+    if (Math.abs(dx) > 60 && Math.abs(dy) < 50 && dt < 700) switchGarden(dx < 0 ? "him" : "her");
+  }, { passive: true });
 
   // ---------- 啟動 ----------
   function chooseRole() {
@@ -746,16 +801,16 @@ input::placeholder { color: var(--ink-faint); }
       ])
     ]));
   }
-  function setRole(r) { try { localStorage.setItem("garden-role", r); } catch (e) {} start(r); }
+  function setRole(r) { lsSet("garden-role", r); start(r); }
   function start(r) {
     isHer = r !== "him";
     started = true;
     render();
     refresh();
-    setInterval(function () { if (!busy && document.visibilityState === "visible" && !document.getElementById("sheet-root").firstChild) refresh(); }, 8000);
+    setInterval(function () { if (!busy && document.visibilityState === "visible" && !sheetOpen()) refresh(); }, 8000);
     document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") refresh(); });
   }
-  // 手機常擋自動播放（省電模式、LINE/IG 內建瀏覽器），影片沒播時改用 CSS 玻璃球
+  // 背景：依裝置載入影片，播完換高清靜態圖；播不了就直接用靜態圖，靜態圖也失敗才用 CSS 玻璃球
   (function () {
     var v = document.getElementById("bg"), still = document.getElementById("still"), stage = document.getElementById("stage");
     layoutVideo();
@@ -765,12 +820,11 @@ input::placeholder { color: var(--ink-faint); }
     still.src = ASSET.end;
     v.src = ASSET.video;
     function showStill() { stage.classList.add("still-on"); }
-    function setNoVideo(on) { if (on) showStill(); }
     v.addEventListener("ended", showStill);
     v.addEventListener("playing", function () { stage.classList.remove("still-on"); });
-    v.addEventListener("error", function () { setNoVideo(true); });
-    var p = v.play(); if (p && p.catch) p.catch(function () { setNoVideo(true); });
-    setTimeout(function () { if (!v.ended && (v.paused || v.readyState < 2)) setNoVideo(true); }, 2500);
+    v.addEventListener("error", showStill);
+    var p = v.play(); if (p && p.catch) p.catch(showStill);
+    setTimeout(function () { if (!v.ended && (v.paused || v.readyState < 2)) showStill(); }, 2500);
     document.addEventListener("touchstart", function () { if (v.paused && !v.ended) { var q = v.play(); if (q && q.catch) q.catch(function () {}); } }, { once: true, passive: true });
   })();
   window.addEventListener("error", function (e) {
@@ -784,17 +838,16 @@ input::placeholder { color: var(--ink-faint); }
     if (!cur || !window.fetch) return;
     fetch(location.pathname + "?_=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.text(); }).then(function (t) {
       var m = t.match(/name="app-version" content="(\d+)"/);
-      if (m && m[1] !== cur.content && location.search.indexOf("v=" + m[1]) === -1 && !document.getElementById("sheet-root").firstChild) location.replace(location.pathname + "?v=" + m[1]);
+      if (m && m[1] !== cur.content && location.search.indexOf("v=" + m[1]) === -1 && !sheetOpen()) location.replace(location.pathname + "?v=" + m[1]);
     }).catch(function () {});
   }
   setTimeout(checkUpdate, 1500);
   document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") checkUpdate(); });
-  window.addEventListener("resize", function () { layoutVideo(); if (started) renderOrb(derive().confirmed); });
+  window.addEventListener("resize", function () { layoutVideo(); if (started) renderOrb(derive(garden).confirmed, null, garden); });
   window.addEventListener("offline", function () { setConn("沒有網路"); });
   window.addEventListener("online", function () { setConn(""); if (started) refresh(); });
   if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) { render(); return; }
-  var saved = null;
-  try { saved = localStorage.getItem("garden-role"); } catch (e) {}
+  var saved = lsGet("garden-role");
   if (saved === "her" || saved === "him") start(saved); else chooseRole();
 })();
 </script>
