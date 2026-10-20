@@ -56,6 +56,10 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outli
     radial-gradient(circle at 50% 50%, rgba(8,12,9,.7), rgba(4,6,5,.92));
   box-shadow: inset 0 0 36px rgba(255,255,255,.14), inset 0 -14px 30px rgba(0,0,0,.5), 0 0 0 1.5px rgba(255,255,255,.28), 0 14px 40px rgba(0,0,0,.6); }
 .novideo #orb-fb { display: block; }
+#orb-dim { position: absolute; border-radius: 50%; pointer-events: none;
+  background: linear-gradient(to bottom, rgba(0,0,0,0) 28%, rgba(0,0,0,.5) 55%, rgba(0,0,0,.62) 100%);
+  -webkit-backdrop-filter: saturate(.7); backdrop-filter: saturate(.7); }
+.novideo #orb-dim { display: none; }
 #err { position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 40; background: rgba(120, 10, 20, .92); color: #fff; font-size: 12px; line-height: 1.4; padding: 8px 10px; border-radius: 8px; word-break: break-all; }
 .orb-hint { position: absolute; transform: translate(-50%, -50%); text-align: center; font-size: 13px; letter-spacing: .14em; color: var(--ink-soft); width: 160px; }
 
@@ -170,6 +174,7 @@ input::placeholder { color: var(--ink-faint); }
   <radialGradient id="centerG" cx=".5" cy=".4" r=".7"><stop offset="0" stop-color="#3b1626"/><stop offset="1" stop-color="#07030a"/></radialGradient>
   <linearGradient id="stemG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#1b3a24"/><stop offset=".5" stop-color="#4a8556"/><stop offset="1" stop-color="#1b3a24"/></linearGradient>
   <linearGradient id="leafG" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#24492f"/><stop offset="1" stop-color="#5f9a62"/></linearGradient>
+  <radialGradient id="glowG"><stop offset="0" stop-color="#ff4a62" stop-opacity=".42"/><stop offset=".55" stop-color="#ff4a62" stop-opacity=".16"/><stop offset="1" stop-color="#ff4a62" stop-opacity="0"/></radialGradient>
   <radialGradient id="baseShadow"><stop offset="0" stop-color="#000" stop-opacity=".6"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
 </defs></svg>
 <div id="stage">
@@ -257,6 +262,7 @@ input::placeholder { color: var(--ink-faint); }
     g.appendChild(svg("path", { d: "M24 " + ly + " C" + (24 + side * 5) + " " + (ly - 3) + " " + (24 + side * 8) + " " + (ly - 7) + " " + (24 + side * 10) + " " + (ly - 11), stroke: "rgba(10,30,15,.45)", "stroke-width": ".35", fill: "none" }));
     // 花頭：斜著看，所以上下壓扁
     var head = svg("g", { transform: "translate(" + hx.toFixed(1) + " 24) rotate(" + ((r(4) - 0.5) * 24).toFixed(1) + ") scale(1 .68)" });
+    head.appendChild(svg("ellipse", { cx: "0", cy: "0", rx: "23", ry: "23", fill: "url(#glowG)" }));
     var n = 5 + Math.floor(r(5) * 2), off = r(6) * 60, petals = [];
     for (var p = 0; p < n; p++) {
       var a = off + p * (360 / n) + (r(10 + p) - 0.5) * 12;
@@ -265,7 +271,7 @@ input::placeholder { color: var(--ink-faint); }
     petals.sort(function (x, y) { return Math.cos(y.a * Math.PI / 180) - Math.cos(x.a * Math.PI / 180); });
     petals.forEach(function (pt) {
       var pg = svg("g", { transform: "rotate(" + pt.a.toFixed(1) + ") scale(" + (0.92).toFixed(2) + " " + pt.len.toFixed(2) + ")" });
-      pg.appendChild(svg("path", { d: "M0 0 C-7.5 -2.5 -10.5 -13 -5.5 -19.5 C-2.5 -23 2.5 -23 5.5 -19.5 C10.5 -13 7.5 -2.5 0 0 Z", fill: "url(#petalG)" }));
+      pg.appendChild(svg("path", { d: "M0 0 C-7.5 -2.5 -10.5 -13 -5.5 -19.5 C-2.5 -23 2.5 -23 5.5 -19.5 C10.5 -13 7.5 -2.5 0 0 Z", fill: "url(#petalG)", stroke: "rgba(255,170,178,.35)", "stroke-width": ".45" }));
       pg.appendChild(svg("path", { d: "M0 -1 C-1 -8 -1 -14 0 -20 M-2.5 -3 C-4 -9 -4 -13 -3.5 -17 M2.5 -3 C4 -9 4 -13 3.5 -17", stroke: "rgba(60,0,12,.32)", "stroke-width": ".4", fill: "none" }));
       pg.appendChild(svg("ellipse", { cx: "-2", cy: "-15", rx: "2.2", ry: "5", fill: "url(#petalHi)", transform: "rotate(-12 -2 -15)" }));
       head.appendChild(pg);
@@ -313,6 +319,9 @@ input::placeholder { color: var(--ink-faint); }
     var fb = el("div", { id: "orb-fb" });
     fb.style.left = (g.cx - g.rx) + "px"; fb.style.top = (g.cy - g.ry) + "px"; fb.style.width = (g.rx * 2) + "px"; fb.style.height = (g.ry * 2) + "px";
     layer.appendChild(fb);
+    var dim = el("div", { id: "orb-dim" });
+    dim.style.left = (g.cx - g.rx * 0.97) + "px"; dim.style.top = (g.cy - g.ry * 0.97) + "px"; dim.style.width = (g.rx * 1.94) + "px"; dim.style.height = (g.ry * 1.94) + "px";
+    layer.appendChild(dim);
     var bx = g.cx, by = g.cy + 0.44 * g.ry, hw = 0.82 * g.rx, hh = 0.34 * g.ry;
     if (!n) {
       layer.appendChild(el("div", { class: "orb-hint", style: "left:" + g.cx + "px;top:" + (g.cy + 0.2 * g.ry) + "px", text: "第一朵花，等你吃完飯種下" }));
