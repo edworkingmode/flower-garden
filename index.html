@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>小紅花花園</title>
-<meta name="app-version" content="11">
+<meta name="app-version" content="13">
 <meta name="theme-color" content="#010101">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -65,7 +65,12 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outli
 .gtab { position: relative; font-size: 13px; letter-spacing: .12em; padding: 6px 16px; border-radius: 999px; color: var(--ink-faint); min-height: 32px; }
 .gtab.on { background: rgba(239, 75, 95, .22); color: var(--ink); }
 .gtab.blue.on { background: rgba(90, 140, 240, .26); }
+.gdot.amber { background: var(--amber); }
 .gdot { position: absolute; top: 4px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: #6c9cff; }
+.pf.black .head { background-image: url(flowers-black.png); }
+.chips .blk b { color: #c9b2ff; }
+.dock .mbtn.blackbtn .name { color: #d9c9ff; }
+.pitem.black { border-color: #9b7ce0; background: rgba(155, 124, 224, .14); }
 .pf.blue .head { background-image: url(flowers-blue.png); }
 .orb-glow.blue { box-shadow: 0 0 70px 24px rgba(90, 140, 255, .45), inset 0 0 70px rgba(150, 185, 255, .35); }
 .dock .mbtn.wide { flex: 1 1 100%; }
@@ -276,7 +281,7 @@ input::placeholder { color: var(--ink-faint); }
   function shortDate(k) { var p = k.split("-"); return +p[1] + "/" + +p[2]; }
   function mealName(k) {
     for (var i = 0; i < MEALS.length; i++) if (MEALS[i].key === k) return MEALS[i].name;
-    return k === "special" ? "特殊事件" : k === "gift" ? HER + "送的" : "特別加花";
+    return k === "special" ? "特殊事件" : k === "gift" ? "小藍花" : k === "black" ? "小黑花" : "特別加花";
   }
   function toast(t) {
     var r = document.getElementById("toast-root");
@@ -300,6 +305,9 @@ input::placeholder { color: var(--ink-faint); }
   function setConn(t) { connText = t; var n = document.querySelector(".conn"); if (n) n.textContent = t; }
   function haptic() { try { if (navigator.vibrate) navigator.vibrate(15); } catch (e) {} }
   function seeded(i) { var x = Math.sin(i * 9301 + 49297) * 233280; return x - Math.floor(x); }
+  function isReq(d) { return d.id.indexOf("_giftreq_") > -1; }
+  var REQ_PER_DAY = 3;
+  function reqsToday() { var t = dateKey(new Date()); return docs.filter(function (d) { return isReq(d) && d.date === t; }); }
   function sheetOpen() { return !!document.getElementById("sheet-root").firstChild; }
 
   // ---------- 照片花：圖集 3x3（取自影片裡的小花；紅花改色，藍花保留原色） ----------
@@ -374,7 +382,7 @@ input::placeholder { color: var(--ink-faint); }
       var isNew = !!(fresh && fresh[it.d.id]);
       var dp = Math.max(0, Math.min(1, (it.y - (by - hh)) / (2 * hh)));
       var S = S0 * (0.86 + 0.28 * dp);
-      var f = photoFlower(it.i + seedOff, isNew, S, GARDENS[g].atlas);
+      var f = photoFlower(it.i + seedOff, isNew, S, it.d.meal === "black" ? " black" : GARDENS[g].atlas);
       if (isNew) { f.style.animationDelay = (bloomIdx++ * 0.25) + "s"; animated[it.d.id] = 1; }
       f.style.opacity = (0.82 + 0.18 * dp).toFixed(2);
       f.style.left = (it.x - S / 2) + "px"; f.style.top = (it.y - f._H) + "px";
@@ -399,9 +407,13 @@ input::placeholder { color: var(--ink-faint); }
     catch (e) { setConn(navigator.onLine === false ? "沒有網路" : "連線不穩，稍後重試"); if (!loaded) toast("連不上資料庫，請檢查設定"); }
   }
   // 小藍花用 meal = "gift" 存在同一張表，不用改資料庫
-  function gardenDocs(g) { return docs.filter(function (d) { return g === "him" ? d.meal === "gift" : d.meal !== "gift"; }); }
+  // 小黑花用 meal = "black"：confirmed 有效、appeal 申訴中、revoked 已撤銷、redeemed 已用 3 朵小藍花贖回
+  function gardenDocs(g) { return docs.filter(function (d) { var him = d.meal === "gift" || d.meal === "black"; return g === "him" ? him : !him; }); }
   function derive(g) {
-    var confirmed = gardenDocs(g).filter(function (d) { return d.status === "confirmed"; }).sort(function (a, b) { return (a.ts || 0) - (b.ts || 0); });
+    var all = gardenDocs(g), byTs = function (a, b) { return (a.ts || 0) - (b.ts || 0); };
+    var confirmed = all.filter(function (d) { return d.status === "confirmed" && d.meal !== "black"; }).sort(byTs);
+    var blacks = all.filter(function (d) { return d.meal === "black" && (d.status === "confirmed" || d.status === "appeal"); }).sort(byTs);
+    var redeemed = all.filter(function (d) { return d.meal === "black" && d.status === "redeemed"; }).length;
     var byDay = {};
     confirmed.forEach(function (d) { byDay[d.date] = (byDay[d.date] || 0) + 1; });
     var streak = 0, cur = new Date();
@@ -410,14 +422,18 @@ input::placeholder { color: var(--ink-faint); }
     var t = new Date(), mon = new Date(t); mon.setDate(t.getDate() - ((t.getDay() + 6) % 7));
     var from = dateKey(mon), week = 0;
     confirmed.forEach(function (d) { if (d.date >= from) week++; });
-    var maxTs = confirmed.length ? confirmed[confirmed.length - 1].ts : 0;
-    return { confirmed: confirmed, streak: streak, week: week, maxTs: maxTs };
+    // 贖回用掉的小藍花從最舊的開始算，不再出現在玻璃球裡
+    var avail = confirmed.slice(Math.min(confirmed.length, redeemed * 3));
+    var inOrb = g === "him" ? avail.concat(blacks).sort(byTs) : confirmed;
+    var maxTs = inOrb.length ? inOrb[inOrb.length - 1].ts : 0;
+    return { confirmed: inOrb, streak: streak, week: week, maxTs: maxTs, blue: avail.length, black: blacks.length, blacks: blacks };
   }
   function slotDoc(date, meal) {
     for (var i = 0; i < docs.length; i++) if (docs[i].date === date && docs[i].meal === meal) return docs[i];
     return null;
   }
-  function pendingDocs() { return docs.filter(function (d) { return d.status === "pending"; }).sort(function (a, b) { return a.ts - b.ts; }); }
+  // 丞丞要確認的是她的三餐與特殊事件；安安老大要確認的是丞丞的藍花申請
+  function pendingDocs() { return docs.filter(function (d) { return isHer ? (d.status === "pending" && d.meal === "gift") || (d.meal === "black" && d.status === "appeal") : (d.status === "pending" && d.meal !== "gift" && d.meal !== "black"); }).sort(function (a, b) { return a.ts - b.ts; }); }
 
   // ---------- 寫入 ----------
   async function write(fn, okMsg) {
@@ -448,8 +464,25 @@ input::placeholder { color: var(--ink-faint); }
     var today = dateKey(new Date()), ts = Date.now();
     return write(function () { return post({ id: today + "_gift_" + ts, date: today, meal: "gift", status: "confirmed", note: reason, reply: "", ts: ts }); }, "送出了，" + HIM + "的玻璃球長出一朵小藍花");
   }
+  function requestGift(reason) {
+    if (reqsToday().length >= REQ_PER_DAY) { toast("今天已經申請 " + REQ_PER_DAY + " 次了，明天再來"); return; }
+    var today = dateKey(new Date()), ts = Date.now();
+    return write(function () { return post({ id: today + "_giftreq_" + ts, date: today, meal: "gift", status: "pending", note: reason, reply: "", ts: ts }); }, "已送出，等" + HER + "確認");
+  }
+  function patch(d, body, msg) { return write(function () { return api("meals?id=eq." + encodeURIComponent(d.id), { method: "PATCH", prefer: "return=minimal", body: body }); }, msg); }
+  function giveBlack(reason) {
+    var today = dateKey(new Date()), ts = Date.now();
+    return write(function () { return post({ id: today + "_black_" + ts, date: today, meal: "black", status: "confirmed", note: reason, reply: "", ts: ts }); }, "已給" + HIM + "一朵小黑花");
+  }
+  function appealBlack(d, text) { return patch(d, { status: "appeal", reply: text }, "已送出申訴，等" + HER + "決定"); }
+  function decideAppeal(d, revoke) { return patch(d, { status: revoke ? "revoked" : "confirmed" }, revoke ? "已撤銷這朵小黑花" : "已駁回申訴"); }
+  function redeemBlack(d) {
+    if (derive("him").blue < 3) { toast("小藍花不夠 3 朵，還不能贖回"); return; }
+    return patch(d, { status: "redeemed" }, "用 3 朵小藍花換掉了一朵小黑花");
+  }
   function confirmDoc(d, reply) {
-    return write(function () { return api("meals?id=eq." + encodeURIComponent(d.id), { method: "PATCH", prefer: "return=minimal", body: { status: "confirmed", reply: reply || "", ts: Date.now() } }); }, "已確認，玻璃球裡長出一朵");
+    var msg = d.meal === "gift" ? "已確認，" + HIM + "的玻璃球長出一朵小藍花" : "已確認，玻璃球裡長出一朵";
+    return write(function () { return api("meals?id=eq." + encodeURIComponent(d.id), { method: "PATCH", prefer: "return=minimal", body: { status: "confirmed", reply: reply || "", ts: Date.now() } }); }, msg);
   }
   function rejectDoc(d, reply) {
     return write(function () { return api("meals?id=eq." + encodeURIComponent(d.id), { method: "PATCH", prefer: "return=minimal", body: { status: "rejected", reply: reply || "" } }); }, "已退回");
@@ -486,13 +519,70 @@ input::placeholder { color: var(--ink-faint); }
     if (isHer) openInput("特殊事件", "原因，例如：生病還是有吃藥", "送出申請", function (v) { if (!v) { toast("請寫一下原因"); return; } claimSpecial(v); });
     else openInput("額外加一朵", "原因，例如：今天特別棒（可留空）", "加一朵", function (v) { addBonus(v); });
   }
+  function openRequest() {
+    var left = REQ_PER_DAY - reqsToday().length;
+    if (left <= 0) { toast("今天已經申請 " + REQ_PER_DAY + " 次了，明天再來"); return; }
+    openInput("申請一朵小藍花", "寫下想讓" + HER + "知道的事", "送出申請", function (v) { if (!v) { toast("寫一句原因吧"); return; } requestGift(v); });
+  }
   function openGift() {
     openInput("送" + HIM + "一朵小藍花", "原因，例如：今天陪我去看醫生", "送出", function (v) { if (!v) { toast("寫一句原因吧"); return; } giveGift(v); });
   }
+  function openBlackGive() {
+    openInput("給" + HIM + "一朵小黑花", "原因，例如：又熬夜不睡", "給他", function (v) { if (!v) { toast("寫一下原因"); return; } giveBlack(v); });
+  }
+  function blackActions(d) {
+    var btns = [];
+    if (!isHer && d.status === "confirmed") {
+      if (!d.reply) btns.push(el("button", { class: "btn", text: "申訴", onclick: function () { openInput("申訴這朵小黑花", "寫下你的理由（只能申訴一次）", "送出申訴", function (v) { if (!v) { toast("寫一下理由"); return; } appealBlack(d, v); }); } }));
+      var blue = derive("him").blue;
+      btns.push(el("button", { class: "btn primary", text: "用 3 朵小藍花贖回", onclick: function () {
+        if (blue < 3) { toast("小藍花不夠 3 朵，還不能贖回"); return; }
+        openPanel([
+          el("h2", { text: "用 3 朵小藍花換掉它？" }),
+          el("p", { class: "legend", style: "font-size:15px;color:var(--ink-soft)", text: "你現在有 " + blue + " 朵小藍花，換掉後剩 " + (blue - 3) + " 朵。最舊的 3 朵會離開玻璃球，紀錄還留著。" }),
+          el("div", { class: "row" }, [
+            el("button", { class: "btn primary", text: "換掉", onclick: function () { closeSheet(); redeemBlack(d); } }),
+            el("button", { class: "btn ghost", text: "再想想", onclick: closeSheet })
+          ])
+        ]);
+      } }));
+    }
+    if (isHer && d.status === "appeal") {
+      btns.push(el("button", { class: "btn primary", text: "撤銷這朵", onclick: function () { closeSheet(); decideAppeal(d, true); } }));
+      btns.push(el("button", { class: "btn", text: "駁回", onclick: function () { closeSheet(); decideAppeal(d, false); } }));
+    }
+    return btns;
+  }
+  function openBlack(d) {
+    var kids = [el("h2", { text: "小黑花・" + shortDate(d.date) })];
+    kids.push(el("div", { class: "msgcard" }, [el("small", { text: HER }), el("p", { text: d.note || "（沒有寫原因）" })]));
+    if (d.reply) kids.push(el("div", { class: "msgcard" }, [el("small", { text: HIM + "的申訴" }), el("p", { text: d.reply })]));
+    if (d.status === "appeal") kids.push(el("p", { class: "legend", text: "申訴中，等" + HER + "決定。" }));
+    else if (d.reply && d.status === "confirmed") kids.push(el("p", { class: "legend", text: "申訴被駁回了。" }));
+    kids.push(el("div", { class: "row" }, blackActions(d).concat([el("button", { class: "btn ghost", text: "關閉", onclick: closeSheet })])));
+    openPanel(kids);
+  }
+  function openBlacks() {
+    var list = derive("him").blacks.slice().reverse();
+    var kids = [el("h2", { text: "小黑花 " + list.length + " 朵" })];
+    if (!list.length) kids.push(el("p", { class: "legend", text: "目前沒有小黑花，很乖。" }));
+    list.forEach(function (d) {
+      kids.push(el("div", { class: "pitem black" }, [
+        el("div", { class: "who", text: shortDate(d.date) + (d.status === "appeal" ? "・申訴中" : "") }),
+        el("p", { class: "quote", text: HER + "：" + (d.note || "") }),
+        el("div", { class: "row" }, blackActions(d))
+      ]));
+    });
+    kids.push(el("div", { class: "row" }, [el("button", { class: "btn ghost", text: "關閉", onclick: closeSheet })]));
+    openPanel(kids);
+  }
   function openFlower(d, nth) {
+    if (d.meal === "black") { openBlack(d); return; }
     var kids = [el("h2", { text: "第 " + nth + " 朵・" + shortDate(d.date) + " " + mealName(d.meal) })];
-    if (d.note) kids.push(el("div", { class: "msgcard" }, [el("small", { text: HER }), el("p", { text: d.note })]));
-    if (d.reply) kids.push(el("div", { class: "msgcard" }, [el("small", { text: HIM }), el("p", { text: d.reply })]));
+    // 申請來的藍花：note 是丞丞寫的、reply 是安安老大回的；其他花：note 是安安老大、reply 是丞丞
+    var noteBy = d.meal === "gift" && isReq(d) ? HIM : HER, replyBy = noteBy === HIM ? HER : HIM;
+    if (d.note) kids.push(el("div", { class: "msgcard" }, [el("small", { text: noteBy }), el("p", { text: d.note })]));
+    if (d.reply) kids.push(el("div", { class: "msgcard" }, [el("small", { text: replyBy }), el("p", { text: d.reply })]));
     if (!d.note && !d.reply) kids.push(el("p", { class: "legend", text: "這朵花沒有留言，但它記得那天有好好吃飯。" }));
     kids.push(el("div", { class: "row" }, [el("button", { class: "btn", text: "關閉", onclick: closeSheet })]));
     openPanel(kids);
@@ -501,9 +591,11 @@ input::placeholder { color: var(--ink-faint); }
   function showNewCard(g, list, maxTs) {
     var kids;
     if (g === "him") {
-      kids = [el("h2", { text: HER + "送你 " + list.length + " 朵小藍花" })];
+      var nb = list.filter(function (d) { return d.meal === "black"; }).length, nu = list.length - nb;
+      kids = [el("h2", { text: nb && nu ? "你收到 " + nu + " 朵小藍花、" + nb + " 朵小黑花" : nb ? HER + "給你 " + nb + " 朵小黑花" : HER + "送你 " + nu + " 朵小藍花" })];
       list.slice(-3).reverse().forEach(function (d) {
-        kids.push(el("div", { class: "msgcard" }, [el("small", { text: shortDate(d.date) }), el("p", { text: d.note || "想送你一朵" })]));
+        var line = d.meal === "black" ? (d.note || "你知道為什麼") : isReq(d) ? (d.reply ? HER + "：" + d.reply : "申請通過：" + d.note) : (d.note || "想送你一朵");
+        kids.push(el("div", { class: "msgcard" }, [el("small", { text: shortDate(d.date) + (d.meal === "black" ? " 小黑花" : isReq(d) ? " 你的申請" : "") }), el("p", { text: line })]));
       });
     } else {
       var withReply = list.filter(function (d) { return d.reply; }).slice(-3).reverse();
@@ -541,11 +633,21 @@ input::placeholder { color: var(--ink-faint); }
     var kids = [el("h2", { text: "等你確認" })];
     if (!pend.length) kids.push(el("p", { class: "legend", text: "目前沒有等你確認的。" }));
     pend.forEach(function (d) {
+      if (d.meal === "black") {
+        kids.push(el("div", { class: "pitem black" }, [
+          el("div", { class: "who", text: shortDate(d.date) + " " + HIM + "申訴一朵小黑花" }),
+          el("p", { class: "quote", text: "你給的原因：" + (d.note || "") }),
+          el("p", { class: "quote", text: HIM + "說：" + (d.reply || "") }),
+          el("div", { class: "row" }, blackActions(d))
+        ]));
+        return;
+      }
+      var gift = d.meal === "gift", who = gift ? HIM : HER, to = gift ? HIM : HER;
       kids.push(el("div", { class: "pitem" }, [
-        el("div", { class: "who", text: shortDate(d.date) + " " + mealName(d.meal) + "，" + HER + (d.meal === "special" ? "申請特殊事件" : "說吃完了") }),
-        d.note ? el("p", { class: "quote", text: HER + "說：" + d.note }) : null,
+        el("div", { class: "who", text: shortDate(d.date) + " " + (gift ? HIM + "申請一朵小藍花" : mealName(d.meal) + "，" + HER + (d.meal === "special" ? "申請特殊事件" : "說吃完了")) }),
+        d.note ? el("p", { class: "quote", text: who + "說：" + d.note }) : null,
         el("div", { class: "row" }, [
-          el("button", { class: "btn primary", text: "確認，給她一朵", onclick: function () { openInput("想對" + HER + "說什麼？", "例如：今天好棒（可留空）", "確認", function (v) { confirmDoc(d, v); }); } }),
+          el("button", { class: "btn primary", text: gift ? "給他一朵" : "確認，給她一朵", onclick: function () { openInput("想對" + to + "說什麼？", "例如：今天好棒（可留空）", "確認", function (v) { confirmDoc(d, v); }); } }),
           el("button", { class: "btn", text: "退回", onclick: function () { openInput("退回原因", "例如：還沒吃完喔（可留空）", "退回", function (v) { rejectDoc(d, v); }); } })
         ])
       ]));
@@ -565,7 +667,15 @@ input::placeholder { color: var(--ink-faint); }
       var glog = el("ul", { class: "log" });
       if (!gifts.length) glog.appendChild(el("li", {}, [el("span", { class: "when" }), el("span", { class: "what", text: "還沒有收到小藍花。" })]));
       gifts.forEach(function (d) {
-        glog.appendChild(el("li", {}, [el("span", { class: "when", text: shortDate(d.date) }), el("div", { class: "what" }, [el("b", { text: "小藍花" }), d.note ? el("p", { class: "note", text: HER + "：" + d.note }) : null])]));
+        var req = isReq(d);
+        var blk = d.meal === "black";
+        var tagText = { pending: "等確認", rejected: "已退回", appeal: "申訴中", revoked: "已撤銷", redeemed: "已贖回" }[d.status];
+        var tag = tagText ? el("span", { class: "tag" + (d.status === "pending" || d.status === "appeal" ? "" : " no"), text: tagText }) : null;
+        glog.appendChild(el("li", {}, [el("span", { class: "when", text: shortDate(d.date) }), el("div", { class: "what" }, [
+          el("div", {}, [el("b", { text: blk ? "小黑花" : req ? HIM + "申請" : HER + "送的" }), tag]),
+          d.note ? el("p", { class: "note", text: (req ? HIM : HER) + "：" + d.note }) : null,
+          d.reply ? el("p", { class: "reply", text: (blk ? HIM + "（申訴）" : req ? HER : HIM) + "：" + d.reply }) : null
+        ])]));
       });
       openPanel([el("h2", { text: HIM + "收到的花" }), glog, roleRow()]);
       return;
@@ -640,7 +750,7 @@ input::placeholder { color: var(--ink-faint); }
     ui.textContent = "";
     if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) { ui.appendChild(el("p", { class: "msg", text: "還沒設定資料庫，請填好 config.js。" })); return; }
     if (!started) return;
-    var G = GARDENS[garden], info = derive(garden), count = info.confirmed.length;
+    var G = GARDENS[garden], info = derive(garden), count = garden === "him" ? info.blue : info.confirmed.length;
     var todayKey = dateKey(new Date()), pend = pendingDocs();
 
     // 兩個花園的新花、未讀提示、卡片、里程碑
@@ -650,7 +760,7 @@ input::placeholder { color: var(--ink-faint); }
       if (!loaded) return;
       var s = getSeen(g, inf.maxTs);
       var list = inf.confirmed.filter(function (d) { return d.ts > s; });
-      if (g === garden) list.forEach(function (d) { if (!animated[d.id]) { fresh[d.id] = 1; freshCount++; } });
+      if (g === garden) list.forEach(function (d) { if (!animated[d.id]) { fresh[d.id] = 1; if (d.meal !== "black") freshCount++; } });
       if (isReceiver(g)) {
         if (list.length && g !== garden) unseenOther = true;
         if (list.length && !cardShown[g]) {
@@ -660,7 +770,7 @@ input::placeholder { color: var(--ink-faint); }
       } else if (inf.maxTs > s && (g !== garden || !list.length || list.every(function (d) { return animated[d.id] || fresh[d.id]; }))) {
         setSeen(g, inf.maxTs);
       }
-      var ms = Math.floor(inf.confirmed.length / 10) * 10, stored = lsGet(msKey(g));
+      var ms = Math.floor((g === "him" ? inf.blue : inf.confirmed.length) / 10) * 10, stored = lsGet(msKey(g));
       if (stored === null) lsSet(msKey(g), ms);
       else if (ms >= 10 && ms > +stored) {
         lsSet(msKey(g), ms);
@@ -686,7 +796,7 @@ input::placeholder { color: var(--ink-faint); }
     }
 
     var tabs = el("div", { class: "gtabs", role: "tablist" }, ["her", "him"].map(function (g) {
-      var dot = g !== garden && unseenOther && isReceiver(g) ? el("span", { class: "gdot" }) : null;
+      var dot = g !== garden && unseenOther && isReceiver(g) ? el("span", { class: "gdot" }) : (isHer && g === "him" && g !== garden && pend.length ? el("span", { class: "gdot amber" }) : null);
       return el("button", { class: "gtab" + (g === garden ? " on" : "") + (g === "him" ? " blue" : ""), role: "tab", "aria-selected": g === garden ? "true" : "false", onclick: function () { switchGarden(g); } }, [GARDENS[g].name, dot]);
     }));
 
@@ -700,7 +810,10 @@ input::placeholder { color: var(--ink-faint); }
       tabs,
       el("p", { class: "eyebrow", text: greet }),
       el("div", { class: "count" }, [numEl, el("span", { class: "unit", text: G.unit })]),
-      el("div", { class: "chips" }, [
+      el("div", { class: "chips" }, garden === "him" ? [
+        el("span", {}, ["本週 ", el("b", { text: String(info.week) }), " 朵"]),
+        el("span", { class: "blk" }, ["小黑花 ", el("b", { text: String(info.black) }), " 朵"])
+      ] : [
         el("span", {}, ["連續 ", el("b", { text: String(info.streak) }), " 天"]),
         el("span", {}, ["本週 ", el("b", { text: String(info.week) }), " 朵"])
       ])
@@ -709,8 +822,20 @@ input::placeholder { color: var(--ink-faint); }
     // 工具列第一頁：小紅花是三餐；小藍花是「送一朵」
     var firstPage = el("div", { class: "page" });
     if (garden === "him") {
-      if (isHer) firstPage.appendChild(el("button", { class: "mbtn wide now", onclick: openGift }, [el("span", { class: "name", text: "送" + HIM + "一朵小藍花" }), el("span", { class: "state", text: "寫一句想謝謝他的事" })]));
-      else firstPage.appendChild(el("button", { class: "mbtn wide", onclick: openRecords }, [el("span", { class: "name", text: "看" + HER + "送的話" }), el("span", { class: "state", text: "共 " + count + " 朵小藍花" })]));
+      if (isHer) {
+        firstPage.appendChild(el("button", { class: "mbtn wide", onclick: openGift }, [el("span", { class: "name", text: "送一朵藍花" }), el("span", { class: "state", text: "謝謝他" })]));
+        firstPage.appendChild(el("button", { class: "mbtn wide blackbtn", onclick: openBlackGive }, [el("span", { class: "name", text: "給小黑花" }), el("span", { class: "state", text: "他不乖" })]));
+        if (pend.length) firstPage.appendChild(el("button", { class: "mbtn wide pending", onclick: openPending }, [el("span", { class: "name", text: "待處理" }), el("span", { class: "state", text: pend.length + " 筆" })]));
+      } else {
+        var rq = reqsToday(), lastReq = rq.length ? rq.slice().sort(function (a, b) { return b.ts - a.ts; })[0] : null, left = REQ_PER_DAY - rq.length;
+        var rstate = lastReq && lastReq.status === "pending" ? "等" + HER + "確認"
+          : lastReq && lastReq.status === "rejected" ? "被退回" + (lastReq.reply ? "：" + lastReq.reply : "")
+          : left > 0 ? "今天還能申請 " + left + " 次" : "今天的申請用完了";
+        var rb = el("button", { class: "mbtn wide" + (lastReq && lastReq.status === "pending" ? " pending" : ""), onclick: openRequest }, [el("span", { class: "name", text: "申請一朵小藍花" }), el("span", { class: "state", text: rstate })]);
+        firstPage.appendChild(rb);
+        if (info.black) firstPage.appendChild(el("button", { class: "mbtn wide blackbtn", onclick: openBlacks }, [el("span", { class: "name", text: "小黑花 " + info.black + " 朵" }), el("span", { class: "state", text: "申訴或贖回" })]));
+        else firstPage.appendChild(el("button", { class: "mbtn wide", onclick: openRecords }, [el("span", { class: "name", text: "看紀錄" }), el("span", { class: "state", text: "共 " + count + " 朵小藍花" })]));
+      }
     } else {
       MEALS.forEach(function (m) {
         var d = slotDoc(todayKey, m.key);
@@ -732,7 +857,7 @@ input::placeholder { color: var(--ink-faint); }
 
     var ico = function (kids) { return svg("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "1.6", "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" }, kids); };
     var toolPage = el("div", { class: "page" });
-    if (!isHer) {
+    if (true) {
       toolPage.appendChild(el("button", { class: "tab", "aria-label": "等你確認", onclick: openPending }, [
         ico([svg("path", { d: "M5 12.5l4.5 4.5L19 7.5" })]), "確認", pend.length ? el("span", { class: "badge", text: String(pend.length) }) : null
       ]));
@@ -747,7 +872,7 @@ input::placeholder { color: var(--ink-faint); }
     var pages = el("div", { class: "pages" }, [firstPage, toolPage]);
     var dots = el("div", { class: "dots2" });
     var dotEls = [0, 1].map(function (n) {
-      var d = el("button", { class: "dot2" + (n === dockPage ? " on" : "") + (n === 1 && pend.length && !isHer ? " alert" : ""), "aria-label": n === 0 ? "主要" : "更多", onclick: function () { pages.scrollTo({ left: n * pages.clientWidth, behavior: "smooth" }); } });
+      var d = el("button", { class: "dot2" + (n === dockPage ? " on" : "") + (n === 1 && pend.length ? " alert" : ""), "aria-label": n === 0 ? "主要" : "更多", onclick: function () { pages.scrollTo({ left: n * pages.clientWidth, behavior: "smooth" }); } });
       dots.appendChild(d); return d;
     });
     pages.addEventListener("scroll", function () {
