@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>小紅花花園</title>
-<meta name="app-version" content="14">
+<meta name="app-version" content="15">
 <meta name="theme-color" content="#010101">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -242,7 +242,7 @@ input::placeholder { color: var(--ink-faint); }
   // 兩個花園：安安老大的小紅花（三餐、特殊事件）、丞丞的小藍花（安安老大隨時送）
   var GARDENS = {
     her: { name: HER, unit: "朵小紅花", atlas: "", empty: "第一朵花，等你吃完飯種下" },
-    him: { name: HIM, unit: "朵小藍花", atlas: " blue", empty: "等" + HER + "送來第一朵" }
+    him: { name: "丞丞會乖", unit: "朵小藍花", atlas: " blue", empty: "等" + HER + "送來第一朵" }
   };
   // 影片尺寸與玻璃球在影片中的位置（以影片寬高為基準的比例）；手機用直式高清裁切版
   var ASSETS = {
@@ -785,7 +785,7 @@ input::placeholder { color: var(--ink-faint); }
 
     // 問候語：小紅花依時間提醒；小藍花說明是誰送的
     var nowMeal = currentMeal(), nowDoc = nowMeal ? slotDoc(todayKey, nowMeal) : null, greet;
-    if (garden === "him") greet = isHer ? HER + " " + HIM + "會乖乖的" : HER + "送你的小藍花";
+    if (garden === "him") greet = isHer ? HER + " 丞丞會乖乖的" : HER + "送你的小藍花";
     else if (!isHer) greet = HER + "的小紅花";
     else {
       var doneNow = nowDoc && (nowDoc.status === "confirmed" || nowDoc.status === "pending");
