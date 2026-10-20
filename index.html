@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>小紅花花園</title>
-<meta name="app-version" content="13">
+<meta name="app-version" content="14">
 <meta name="theme-color" content="#010101">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -785,7 +785,7 @@ input::placeholder { color: var(--ink-faint); }
 
     // 問候語：小紅花依時間提醒；小藍花說明是誰送的
     var nowMeal = currentMeal(), nowDoc = nowMeal ? slotDoc(todayKey, nowMeal) : null, greet;
-    if (garden === "him") greet = isHer ? "想謝謝" + HIM + "的時候，就送他一朵" : HER + "送你的小藍花";
+    if (garden === "him") greet = isHer ? HER + " " + HIM + "會乖乖的" : HER + "送你的小藍花";
     else if (!isHer) greet = HER + "的小紅花";
     else {
       var doneNow = nowDoc && (nowDoc.status === "confirmed" || nowDoc.status === "pending");
